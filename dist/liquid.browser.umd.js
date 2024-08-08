@@ -2385,9 +2385,28 @@
         Tokenizer.prototype.readContentBlocksToken = function (options) {
             var _a = this, file = _a.file, input = _a.input;
             var begin = this.p;
-            this.p += 'content_blocks.'.length; // Skip content_blocks.
-            this.readToDelimiter('}}');
+            // Move the pointer past the '{{content_blocks.' part
+            this.p += '{{content_blocks.'.length;
+            // Read the filename part dynamically
+            var filename = '';
+            while (this.p < this.N && this.input[this.p] !== '}') {
+                filename += this.input[this.p];
+                this.p++;
+            }
+            // Ensure the tag ends with '}}'
+            if (this.input[this.p] === '}') {
+                this.p++;
+                if (this.input[this.p] === '}') {
+                    this.p++;
+                }
+                else {
+                    throw this.error('Tag not closed properly');
+                }
+            }
+            // Create a new TagToken with the filename included
             var token = new TagToken(input, begin, this.p, options, file);
+            //@ts-ignore
+            token.args = [filename];
             return token;
         };
         Tokenizer.prototype.readToDelimiter = function (delimiter, respectQuoted) {
@@ -5633,7 +5652,7 @@
     function parseFilePath$1(tokenizer, liquid, parser) {
         if (liquid.options.dynamicPartials) {
             var file = tokenizer.readValue();
-            tokenizer.assert(file, '[cb parseFilePath] illegal file path');
+            tokenizer.assert(file, '[cb parsefilepath]illegal file path');
             if (file.getText() === 'none')
                 return;
             if (isQuotedToken(file)) {

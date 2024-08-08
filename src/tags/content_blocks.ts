@@ -39,7 +39,7 @@ export default class extends Tag {
 export function parseFilePath(tokenizer: Tokenizer, liquid: Liquid, parser: Parser): ParsedFileName {
   if (liquid.options.dynamicPartials) {
     const file = tokenizer.readValue();
-    tokenizer.assert(file, '[cb parseFilePath] illegal file path');
+    tokenizer.assert(file, '[cb parsefilepath]illegal file path');
     if (file!.getText() === 'none') return;
     if (TypeGuards.isQuotedToken(file)) {
       const templates = parser.parse(evalQuotedToken(file));

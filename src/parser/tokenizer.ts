@@ -165,12 +165,34 @@ export class Tokenizer {
     return token;
   }
 
-  readContentBlocksToken (options: NormalizedFullOptions): TagToken {
+  readContentBlocksToken(options: NormalizedFullOptions): TagToken {
     const { file, input } = this;
     const begin = this.p;
-    this.p += 'content_blocks.'.length; // Skip content_blocks.
-    this.readToDelimiter('}}');
+  
+    // Move the pointer past the '{{content_blocks.' part
+    this.p += '{{content_blocks.'.length;
+  
+    // Read the filename part dynamically
+    let filename = '';
+    while (this.p < this.N && this.input[this.p] !== '}') {
+      filename += this.input[this.p];
+      this.p++;
+    }
+  
+    // Ensure the tag ends with '}}'
+    if (this.input[this.p] === '}') {
+      this.p++;
+      if (this.input[this.p] === '}') {
+        this.p++;
+      } else {
+        throw this.error('Tag not closed properly');
+      }
+    }
+  
+    // Create a new TagToken with the filename included
     const token = new TagToken(input, begin, this.p, options, file);
+    //@ts-ignore
+    token.args = [filename];
     return token;
   }
 
