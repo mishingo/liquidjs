@@ -5882,86 +5882,95 @@
             .map(function (x) { return x.toLocaleLowerCase(); })
             .join('-');
     };
-    var renderContentBlocks = function (liquid, ctx, fileName) {
-        return __awaiter(this, void 0, void 0, function () {
-            var customOpts, opts, root, base_1, roots, ext, template, err_1, err_2, err_3;
-            return __generator(this, function (_a) {
-                switch (_a.label) {
-                    case 0:
-                        customOpts = ctx.environments['__contentBlocks'];
-                        opts = {};
-                        root = ctx.opts.root.slice(0);
-                        if (root.length === 1) {
-                            base_1 = root[0];
-                            roots = ['./content_blocks', '../content_blocks'];
-                            if (customOpts && customOpts.root && customOpts.root.length > 0) {
-                                roots = typeof customOpts.root === 'string' ? [customOpts.root] : customOpts.root;
-                            }
-                            opts['root'] = roots.map(function (p) { return path.resolve(base_1, p); });
+    var renderContentBlocks = function (liquid, ctx, fileName) { return __awaiter(void 0, void 0, void 0, function () {
+        var customOpts, opts, root, base_1, roots, ext, template, err_1, err_2, err_3;
+        return __generator(this, function (_a) {
+            switch (_a.label) {
+                case 0:
+                    customOpts = ctx.environments['__contentBlocks'];
+                    opts = {};
+                    root = ctx.opts.root.slice(0);
+                    if (root.length === 1) {
+                        base_1 = root[0];
+                        roots = ['./content_blocks', '../content_blocks'];
+                        if (customOpts && customOpts.root && customOpts.root.length > 0) {
+                            roots = typeof customOpts.root === 'string' ? [customOpts.root] : customOpts.root;
                         }
-                        ext = (customOpts && customOpts.ext) || '.liquid';
-                        _a.label = 1;
-                    case 1:
-                        _a.trys.push([1, 3, , 13]);
-                        return [4 /*yield*/, liquid.parseFile(fileName, opts)];
-                    case 2:
-                        template = _a.sent();
-                        return [3 /*break*/, 13];
-                    case 3:
-                        err_1 = _a.sent();
-                        _a.label = 4;
-                    case 4:
-                        _a.trys.push([4, 6, , 12]);
-                        return [4 /*yield*/, liquid.parseFile(toKebabCase(fileName), opts)];
-                    case 5:
-                        template = _a.sent();
-                        return [3 /*break*/, 12];
-                    case 6:
-                        err_2 = _a.sent();
-                        _a.label = 7;
-                    case 7:
-                        _a.trys.push([7, 9, , 11]);
-                        return [4 /*yield*/, liquid.parseFile(fileName + ext, opts)];
-                    case 8:
-                        template = _a.sent();
-                        return [3 /*break*/, 11];
-                    case 9:
-                        err_3 = _a.sent();
-                        return [4 /*yield*/, liquid.parseFile(toKebabCase(fileName) + ext, opts)];
-                    case 10:
-                        template = _a.sent();
-                        return [3 /*break*/, 11];
-                    case 11: return [3 /*break*/, 12];
-                    case 12: return [3 /*break*/, 13];
-                    case 13: return [2 /*return*/, liquid.render(template, ctx.getAll(), ctx.opts)];
-                }
-            });
+                        opts.root = roots.map(function (p) { return path.resolve(base_1, p); });
+                    }
+                    ext = (customOpts && customOpts.ext) || '.liquid';
+                    _a.label = 1;
+                case 1:
+                    _a.trys.push([1, 3, , 13]);
+                    return [4 /*yield*/, liquid.parseFile(fileName, opts)];
+                case 2:
+                    template = _a.sent();
+                    return [3 /*break*/, 13];
+                case 3:
+                    err_1 = _a.sent();
+                    _a.label = 4;
+                case 4:
+                    _a.trys.push([4, 6, , 12]);
+                    return [4 /*yield*/, liquid.parseFile(toKebabCase(fileName), opts)];
+                case 5:
+                    template = _a.sent();
+                    return [3 /*break*/, 12];
+                case 6:
+                    err_2 = _a.sent();
+                    _a.label = 7;
+                case 7:
+                    _a.trys.push([7, 9, , 11]);
+                    return [4 /*yield*/, liquid.parseFile(fileName + ext, opts)];
+                case 8:
+                    template = _a.sent();
+                    return [3 /*break*/, 11];
+                case 9:
+                    err_3 = _a.sent();
+                    return [4 /*yield*/, liquid.parseFile(toKebabCase(fileName) + ext, opts)];
+                case 10:
+                    template = _a.sent();
+                    return [3 /*break*/, 11];
+                case 11: return [3 /*break*/, 12];
+                case 12: return [3 /*break*/, 13];
+                case 13: return [2 /*return*/, liquid.render(template, ctx.getAll(), ctx.opts)];
+            }
         });
-    };
+    }); };
     var ContentBlockTag = {
         parse: function (tagToken, remainingTokens) {
-            var match = /content_blocks\.([\w\-]+)/.exec(tagToken.args);
-            if (!match) {
-                //@ts-ignore
-                throw new Error("illegal token ".concat(tagToken.raw));
+            var match = /content_blocks\.(\w+)/.exec(tagToken.args);
+            if (match) {
+                this.fileName = match[1];
             }
-            this.fileName = match[1];
+            else {
+                this.variable = tagToken.args.trim();
+            }
         },
         render: function (ctx, emitter) {
             return __awaiter(this, void 0, void 0, function () {
-                var originBlocks, originBlockMode, html;
+                var fileName, originBlocks, originBlockMode, html;
                 return __generator(this, function (_a) {
                     switch (_a.label) {
                         case 0:
-                            if (!this.fileName) {
-                                throw new Error('content blocks name is undefined');
+                            if (!this.fileName) return [3 /*break*/, 1];
+                            fileName = this.fileName;
+                            return [3 /*break*/, 3];
+                        case 1:
+                            if (!this.variable) return [3 /*break*/, 3];
+                            return [4 /*yield*/, this.liquid.evalValue(this.variable, ctx)];
+                        case 2:
+                            fileName = _a.sent();
+                            _a.label = 3;
+                        case 3:
+                            if (!fileName) {
+                                throw new Error('Content block name is undefined');
                             }
                             originBlocks = ctx.getRegister('blocks');
                             originBlockMode = ctx.getRegister('blockMode');
                             ctx.setRegister('blocks', {});
                             ctx.setRegister('blockMode', 1); // BlockMode.OUTPUT is 1 in liquidjs 10.16.1
-                            return [4 /*yield*/, renderContentBlocks(this.liquid, ctx, this.fileName)];
-                        case 1:
+                            return [4 /*yield*/, renderContentBlocks(this.liquid, ctx, fileName)];
+                        case 4:
                             html = _a.sent();
                             ctx.setRegister('blocks', originBlocks);
                             ctx.setRegister('blockMode', originBlockMode);

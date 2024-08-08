@@ -4309,59 +4309,66 @@ var abortMessage = {
 const toKebabCase = (str) => str.match(/[A-Z]{2,}(?=[A-Z][a-z]+[0-9]*|\b)|[A-Z]?[a-z]+[0-9]*|[A-Z]|[0-9]+/g)
     .map(x => x.toLocaleLowerCase())
     .join('-');
-const renderContentBlocks = function (liquid, ctx, fileName) {
-    return __awaiter(this, void 0, void 0, function* () {
-        const customOpts = ctx.environments['__contentBlocks'];
-        const opts = {};
-        const root = ctx.opts.root.slice(0);
-        if (root.length === 1) {
-            const base = root[0];
-            let roots = ['./content_blocks', '../content_blocks'];
-            if (customOpts && customOpts.root && customOpts.root.length > 0) {
-                roots = typeof customOpts.root === 'string' ? [customOpts.root] : customOpts.root;
-            }
-            opts['root'] = roots.map(p => resolve$1(base, p));
+const renderContentBlocks = (liquid, ctx, fileName) => __awaiter(void 0, void 0, void 0, function* () {
+    //@ts-ignore
+    const customOpts = ctx.environments['__contentBlocks'];
+    const opts = {};
+    const root = ctx.opts.root.slice(0);
+    if (root.length === 1) {
+        const base = root[0];
+        let roots = ['./content_blocks', '../content_blocks'];
+        if (customOpts && customOpts.root && customOpts.root.length > 0) {
+            roots = typeof customOpts.root === 'string' ? [customOpts.root] : customOpts.root;
         }
-        const ext = (customOpts && customOpts.ext) || '.liquid';
-        let template;
+        opts.root = roots.map(p => resolve$1(base, p));
+    }
+    const ext = (customOpts && customOpts.ext) || '.liquid';
+    let template;
+    try {
+        template = yield liquid.parseFile(fileName, opts);
+    }
+    catch (err) {
         try {
-            template = yield liquid.parseFile(fileName, opts);
+            template = yield liquid.parseFile(toKebabCase(fileName), opts);
         }
         catch (err) {
             try {
-                template = yield liquid.parseFile(toKebabCase(fileName), opts);
+                template = yield liquid.parseFile(fileName + ext, opts);
             }
             catch (err) {
-                try {
-                    template = yield liquid.parseFile(fileName + ext, opts);
-                }
-                catch (err) {
-                    template = yield liquid.parseFile(toKebabCase(fileName) + ext, opts);
-                }
+                template = yield liquid.parseFile(toKebabCase(fileName) + ext, opts);
             }
         }
-        return liquid.render(template, ctx.getAll(), ctx.opts);
-    });
-};
+    }
+    return liquid.render(template, ctx.getAll(), ctx.opts);
+});
 const ContentBlockTag = {
     parse(tagToken, remainingTokens) {
-        const match = /content_blocks\.([\w\-]+)/.exec(tagToken.args);
-        if (!match) {
-            //@ts-ignore
-            throw new Error(`illegal token ${tagToken.raw}`);
+        const match = /content_blocks\.(\w+)/.exec(tagToken.args);
+        if (match) {
+            this.fileName = match[1];
         }
-        this.fileName = match[1];
+        else {
+            this.variable = tagToken.args.trim();
+        }
     },
     render(ctx, emitter) {
         return __awaiter(this, void 0, void 0, function* () {
-            if (!this.fileName) {
-                throw new Error('content blocks name is undefined');
+            let fileName;
+            if (this.fileName) {
+                fileName = this.fileName;
+            }
+            else if (this.variable) {
+                fileName = yield this.liquid.evalValue(this.variable, ctx);
+            }
+            if (!fileName) {
+                throw new Error('Content block name is undefined');
             }
             const originBlocks = ctx.getRegister('blocks');
             const originBlockMode = ctx.getRegister('blockMode');
             ctx.setRegister('blocks', {});
             ctx.setRegister('blockMode', 1); // BlockMode.OUTPUT is 1 in liquidjs 10.16.1
-            const html = yield renderContentBlocks(this.liquid, ctx, this.fileName);
+            const html = yield renderContentBlocks(this.liquid, ctx, fileName);
             ctx.setRegister('blocks', originBlocks);
             ctx.setRegister('blockMode', originBlockMode);
             emitter.write(html);

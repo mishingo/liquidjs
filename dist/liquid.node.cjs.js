@@ -4291,7 +4291,8 @@ var abortMessage = {
 const toKebabCase = (str) => str.match(/[A-Z]{2,}(?=[A-Z][a-z]+[0-9]*|\b)|[A-Z]?[a-z]+[0-9]*|[A-Z]|[0-9]+/g)
     .map(x => x.toLocaleLowerCase())
     .join('-');
-const renderContentBlocks = async function (liquid, ctx, fileName) {
+const renderContentBlocks = async (liquid, ctx, fileName) => {
+    //@ts-ignore
     const customOpts = ctx.environments['__contentBlocks'];
     const opts = {};
     const root = ctx.opts.root.slice(0);
@@ -4301,7 +4302,7 @@ const renderContentBlocks = async function (liquid, ctx, fileName) {
         if (customOpts && customOpts.root && customOpts.root.length > 0) {
             roots = typeof customOpts.root === 'string' ? [customOpts.root] : customOpts.root;
         }
-        opts['root'] = roots.map(p => path.resolve(base, p));
+        opts.root = roots.map(p => path.resolve(base, p));
     }
     const ext = (customOpts && customOpts.ext) || '.liquid';
     let template;
@@ -4325,22 +4326,30 @@ const renderContentBlocks = async function (liquid, ctx, fileName) {
 };
 const ContentBlockTag = {
     parse(tagToken, remainingTokens) {
-        const match = /content_blocks\.([\w\-]+)/.exec(tagToken.args);
-        if (!match) {
-            //@ts-ignore
-            throw new Error(`illegal token ${tagToken.raw}`);
+        const match = /content_blocks\.(\w+)/.exec(tagToken.args);
+        if (match) {
+            this.fileName = match[1];
         }
-        this.fileName = match[1];
+        else {
+            this.variable = tagToken.args.trim();
+        }
     },
     async render(ctx, emitter) {
-        if (!this.fileName) {
-            throw new Error('content blocks name is undefined');
+        let fileName;
+        if (this.fileName) {
+            fileName = this.fileName;
+        }
+        else if (this.variable) {
+            fileName = await this.liquid.evalValue(this.variable, ctx);
+        }
+        if (!fileName) {
+            throw new Error('Content block name is undefined');
         }
         const originBlocks = ctx.getRegister('blocks');
         const originBlockMode = ctx.getRegister('blockMode');
         ctx.setRegister('blocks', {});
         ctx.setRegister('blockMode', 1); // BlockMode.OUTPUT is 1 in liquidjs 10.16.1
-        const html = await renderContentBlocks(this.liquid, ctx, this.fileName);
+        const html = await renderContentBlocks(this.liquid, ctx, fileName);
         ctx.setRegister('blocks', originBlocks);
         ctx.setRegister('blockMode', originBlockMode);
         emitter.write(html);
