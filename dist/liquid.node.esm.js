@@ -4089,7 +4089,7 @@ class ContentBlockTag extends Tag {
         const { liquid, hash } = this;
         const filename = (yield renderFilePath$1(this['file'], ctx, liquid));
         assert(filename, () => `illegal file path "${filename}"`);
-        const filepath = `src/content_blocks/${filename}.liquid`;
+        const filepath = `${__dirname}/src/content_blocks/${filename}.liquid`;
         const childCtx = ctx.spawn();
         const scope = childCtx.bottom();
         __assign(scope, yield hash.render(ctx));
