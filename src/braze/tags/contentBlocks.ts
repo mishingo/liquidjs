@@ -45,12 +45,12 @@ const renderContentBlocks = async function (liquid: Liquid, ctx: Context, fileNa
 
 const ContentBlockTag: TagImplOptions = {
   parse(tagToken: TagToken, remainingTokens: Token[]) {
-    const match = tagToken.args.match(/\s*(\w+)\s*=\s*"(.*)"/);
+    const match = /content_blocks\.([\w\-]+)/.exec(tagToken.args);
     if (!match) {
       //@ts-ignore
       throw new Error(`illegal token ${tagToken.raw}`);
     }
-    this.fileName = match[2];
+    this.fileName = match[1];
   },
   async render(ctx: Context, emitter: Emitter) {
     if (!this.fileName) {

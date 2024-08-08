@@ -5940,12 +5940,12 @@
     };
     var ContentBlockTag = {
         parse: function (tagToken, remainingTokens) {
-            var match = tagToken.args.match(/\s*(\w+)\s*=\s*"(.*)"/);
+            var match = /content_blocks\.([\w\-]+)/.exec(tagToken.args);
             if (!match) {
                 //@ts-ignore
                 throw new Error("illegal token ".concat(tagToken.raw));
             }
-            this.fileName = match[2];
+            this.fileName = match[1];
         },
         render: function (ctx, emitter) {
             return __awaiter(this, void 0, void 0, function () {
