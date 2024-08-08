@@ -1,69 +1,73 @@
-import { Liquid, TagToken, Context } from '../..';
-import { BlockMode } from '../../context/block-mode'
-import { readFile } from 'fs/promises';
+import { TagToken, Context, Emitter, Template, ParseStream, Liquid, Token } from '../..';
+import {TagImplOptions} from '../../template/tag-options-adapter'
 import { resolve } from 'path';
 
-const identifier = /[\w-]+[?]?/;
-const attribute = new RegExp(`^\\s*content_blocks\\s*\\$\\{\\s*(${identifier.source})\\s*\\}\\s*$`);
-const toKebabCase = (str: String) =>
+
+const toKebabCase = (str: string) =>
   str!.match(/[A-Z]{2,}(?=[A-Z][a-z]+[0-9]*|\b)|[A-Z]?[a-z]+[0-9]*|[A-Z]|[0-9]+/g)!
     .map(x => x.toLocaleLowerCase())
-    .join('-')
+    .join('-');
 
-//@ts-ignore
-const renderContentBlocks = async (liquid, ctx, fileName) => {
+const renderContentBlocks = async function (liquid: Liquid, ctx: Context, fileName: string) {
   const customOpts = ctx.environments['__contentBlocks'];
-  const roots = customOpts?.root || ['./content_blocks', '../content_blocks'];
-  const ext = customOpts?.ext || '.liquid';
-  const base = ctx.opts.root[0];
-//@ts-ignore
-  const opts = { root: roots.map(p => resolve(base, p)) };
+  const opts: any = {};
+  const root = ctx.opts.root.slice(0);
 
-  let fileContent;
+  if (root.length === 1) {
+    const base = root[0];
+    let roots = ['./content_blocks', '../content_blocks'];
+    if (customOpts && customOpts.root && customOpts.root.length > 0) {
+      roots = typeof customOpts.root === 'string' ? [customOpts.root] : customOpts.root;
+    }
+
+    opts['root'] = roots.map(p => resolve(base, p));
+  }
+
+  const ext = (customOpts && customOpts.ext) || '.liquid';
+
+  let template: Template[];
   try {
-    fileContent = await readFile(resolve(base, ...roots, `${fileName}${ext}`), 'utf8');
+    template = await liquid.parseFile(fileName, opts);
   } catch (err) {
     try {
-      fileContent = await readFile(resolve(base, ...roots, `${toKebabCase(fileName)}${ext}`), 'utf8');
+      template = await liquid.parseFile(toKebabCase(fileName), opts);
     } catch (err) {
-      console.error(`Error reading file for ${fileName}:`, err);
-      return '';
+      try {
+        template = await liquid.parseFile(fileName + ext, opts);
+      } catch (err) {
+        template = await liquid.parseFile(toKebabCase(fileName) + ext, opts);
+      }
     }
   }
 
-  const template = liquid.parse(fileContent);
-  return await liquid.render(template, ctx);
+  return liquid.render(template, ctx.getAll(), ctx.opts);
 };
 
-export default {
-  //@ts-ignore
-  parse: function (tagToken) {
-    const match = tagToken.value.match(/^\s*content_blocks\.(\S+)\s*$/);
+const ContentBlockTag: TagImplOptions = {
+  parse(tagToken: TagToken, remainingTokens: Token[]) {
+    const match = tagToken.args.match(/\s*(\w+)\s*=\s*"(.*)"/);
     if (!match) {
-      throw new Error(`Illegal token ${tagToken.raw}`);
+      //@ts-ignore
+      throw new Error(`illegal token ${tagToken.raw}`);
     }
-    //@ts-ignore
-    this.fileName = match[1];
-    //@ts-ignore
-    this.extension = '.liquid';
+    this.fileName = match[2];
   },
-  //@ts-ignore
-  render: async function (ctx) {
-    //@ts-ignore
+  async render(ctx: Context, emitter: Emitter) {
     if (!this.fileName) {
-      throw new Error(`Content block name is undefined`);
+      throw new Error('content blocks name is undefined');
     }
 
     const originBlocks = ctx.getRegister('blocks');
     const originBlockMode = ctx.getRegister('blockMode');
     ctx.setRegister('blocks', {});
-    ctx.setRegister('blockMode', BlockMode.OUTPUT);
-//@ts-ignore
-    const html = await renderContentBlocks(this.liquid, ctx, this.fileName);
+    ctx.setRegister('blockMode', 1); // BlockMode.OUTPUT is 1 in liquidjs 10.16.1
 
+    const html = await renderContentBlocks(this.liquid, ctx, this.fileName);
     ctx.setRegister('blocks', originBlocks);
     ctx.setRegister('blockMode', originBlockMode);
 
-    return html;
+    emitter.write(html);
   }
 };
+
+export default ContentBlockTag;
