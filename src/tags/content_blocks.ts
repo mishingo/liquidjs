@@ -58,3 +58,4 @@ export function * renderFilePath(file: ParsedFileName, ctx: Context, liquid: Liq
   if (Array.isArray(file)) return liquid.renderer.renderTemplates(file, ctx);
   return yield evalToken(file, ctx);
 }
+

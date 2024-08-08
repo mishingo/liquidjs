@@ -1900,24 +1900,30 @@ class Tokenizer {
         const begin = this.p;
         // Move the pointer past the '{{content_blocks.' part
         this.p += '{{content_blocks.'.length;
-        // Read the filename part dynamically
-        let filename = '';
-        while (this.p < this.N && this.input[this.p] !== '}' && this.input[this.p + 1] !== '}') {
-            filename += this.input[this.p];
-            this.p++;
-        }
-        // Ensure the tag ends with '}}'
-        if (this.input[this.p] === '}' && this.input[this.p + 1] === '}') {
-            this.p += 2; // Move past the closing '}}'
+        // Read the dynamic part within ${}
+        if (this.input[this.p] === '$' && this.input[this.p + 1] === '{') {
+            this.p += 2; // Move past the '${'
+            let filename = '';
+            while (this.p < this.N && !(this.input[this.p] === '}' && this.input[this.p + 1] === '}')) {
+                filename += this.input[this.p];
+                this.p++;
+            }
+            // Ensure the tag ends with '}}'
+            if (this.input[this.p] === '}' && this.input[this.p + 1] === '}') {
+                this.p += 2; // Move past the closing '}}'
+            }
+            else {
+                throw this.error('Tag not closed properly');
+            }
+            // Create a new TagToken
+            const token = new TagToken(input, begin, this.p, options, file);
+            //@ts-ignore  
+            token.filename = filename; // Add the filename as a property
+            return token;
         }
         else {
-            throw this.error('Tag not closed properly');
+            throw this.error('Dynamic part not properly enclosed in ${}');
         }
-        // Create a new TagToken
-        const token = new TagToken(input, begin, this.p, options, file);
-        //@ts-ignore
-        token.filename = filename; // Add the filename as a property
-        return token;
     }
     readToDelimiter(delimiter, respectQuoted = false) {
         this.skipBlank();
