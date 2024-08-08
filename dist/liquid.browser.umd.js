@@ -2353,12 +2353,12 @@
             var tagDelimiterLeft = options.tagDelimiterLeft, outputDelimiterLeft = options.outputDelimiterLeft;
             if (this.rawBeginAt > -1)
                 return this.readEndrawOrRawContent(options);
+            if (this.match('{{content_blocks.${'))
+                return this.readContentBlocksToken(options); // Handle content_blocks tag
             if (this.match(tagDelimiterLeft))
                 return this.readTagToken(options);
             if (this.match(outputDelimiterLeft))
                 return this.readOutputToken(options);
-            if (this.match('{{content_blocks.${'))
-                return this.readContentBlocksToken(options); // Handle content_blocks tag
             return this.readHTMLToken([tagDelimiterLeft, outputDelimiterLeft]);
         };
         Tokenizer.prototype.readHTMLToken = function (stopStrings) {
