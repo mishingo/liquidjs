@@ -2357,7 +2357,7 @@
                 return this.readTagToken(options);
             if (this.match(outputDelimiterLeft))
                 return this.readOutputToken(options);
-            if (this.match('content_blocks.'))
+            if (this.match('{{content_blocks.${'))
                 return this.readContentBlocksToken(options); // Handle content_blocks tag
             return this.readHTMLToken([tagDelimiterLeft, outputDelimiterLeft]);
         };
@@ -2386,7 +2386,7 @@
             var _a = this, file = _a.file, input = _a.input;
             var begin = this.p;
             this.p += 'content_blocks.'.length; // Skip content_blocks.
-            this.readToDelimiter(options.outputDelimiterRight);
+            this.readToDelimiter('}}');
             var token = new TagToken(input, begin, this.p, options, file);
             return token;
         };

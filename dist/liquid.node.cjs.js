@@ -1871,7 +1871,7 @@ class Tokenizer {
             return this.readTagToken(options);
         if (this.match(outputDelimiterLeft))
             return this.readOutputToken(options);
-        if (this.match('content_blocks.'))
+        if (this.match('{{content_blocks.${'))
             return this.readContentBlocksToken(options); // Handle content_blocks tag
         return this.readHTMLToken([tagDelimiterLeft, outputDelimiterLeft]);
     }
@@ -1899,7 +1899,7 @@ class Tokenizer {
         const { file, input } = this;
         const begin = this.p;
         this.p += 'content_blocks.'.length; // Skip content_blocks.
-        this.readToDelimiter(options.outputDelimiterRight);
+        this.readToDelimiter('}}');
         const token = new TagToken(input, begin, this.p, options, file);
         return token;
     }
