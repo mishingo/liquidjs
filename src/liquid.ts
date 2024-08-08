@@ -5,6 +5,8 @@ import { LookupType } from './fs/loader'
 import { Render } from './render'
 import { Parser } from './parser'
 import { tags } from './tags'
+import brazeFilters from './braze/filters'
+import brazeTags from './braze/tags'
 import { filters } from './filters'
 import { LiquidOptions, normalizeDirectoryList, NormalizedFullOptions, normalize, RenderOptions, RenderFileOptions } from './liquid-options'
 
@@ -24,6 +26,8 @@ export class Liquid {
     this.parser = new Parser(this)
     forOwn(tags, (conf: TagClass, name: string) => this.registerTag(name, conf))
     forOwn(filters, (handler: FilterImplOptions, name: string) => this.registerFilter(name, handler))
+    forOwn(brazeFilters, (handler, name) => this.registerFilter(name, handler))
+    forOwn(brazeTags, (conf, name) => this.registerTag(name, conf))
   }
   public parse (html: string, filepath?: string): Template[] {
     const parser = new Parser(this)

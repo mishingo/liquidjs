@@ -125,6 +125,15 @@ export function readProperty (obj: Scope, key: PropertyKey, ownPropertyOnly: boo
   if (isArray(obj) && (key as number) < 0) return obj[obj.length + +key]
   const value = readJSProperty(obj, key, ownPropertyOnly)
   if (value === undefined && obj instanceof Drop) return obj.liquidMethodMissing(key)
+
+  if (key === 'first' && isArray(obj)) {
+    // @ts-ignore
+    return obj[0]
+  } else if (key === 'last' && isArray(obj)) {
+    // @ts-ignore
+    return obj[obj.length - 1]
+  }
+
   if (isFunction(value)) return value.call(obj)
   if (key === 'size') return readSize(obj)
   else if (key === 'first') return readFirst(obj)
