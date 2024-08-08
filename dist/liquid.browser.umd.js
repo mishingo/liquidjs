@@ -4,10 +4,10 @@
  * Released under the MIT License.
  */
 (function (global, factory) {
-    typeof exports === 'object' && typeof module !== 'undefined' ? factory(exports, require('crypto'), require('request-promise-cache')) :
-    typeof define === 'function' && define.amd ? define(['exports', 'crypto', 'request-promise-cache'], factory) :
-    (global = global || self, factory(global.liquidjs = {}, global.crypto, global.rp_));
-}(this, (function (exports, crypto, rp_) { 'use strict';
+    typeof exports === 'object' && typeof module !== 'undefined' ? factory(exports, require('path'), require('crypto'), require('request-promise-cache')) :
+    typeof define === 'function' && define.amd ? define(['exports', 'path', 'crypto', 'request-promise-cache'], factory) :
+    (global = global || self, factory(global.liquidjs = {}, global.path, global.crypto, global.rp_));
+}(this, (function (exports, path, crypto, rp_) { 'use strict';
 
     /******************************************************************************
     Copyright (c) Microsoft Corporation.
@@ -5587,7 +5587,7 @@
             return _this;
         }
         default_1.prototype.render = function (ctx, emitter) {
-            var _a, liquid, hash, filename, filepath, childCtx, scope, _b, _c, templates;
+            var _a, liquid, hash, filename, projectRoot, filepath, childCtx, scope, _b, _c, templates;
             return __generator(this, function (_d) {
                 switch (_d.label) {
                     case 0:
@@ -5596,7 +5596,8 @@
                     case 1:
                         filename = (_d.sent());
                         assert(filename, function () { return "illegal file path \"".concat(filename, "\""); });
-                        filepath = "".concat(__dirname, "/src/content_blocks/").concat(filename, ".liquid");
+                        projectRoot = process.cwd();
+                        filepath = path.join(projectRoot, 'src', 'content_blocks', "".concat(filename, ".liquid"));
                         childCtx = ctx.spawn();
                         scope = childCtx.bottom();
                         _b = __assign;

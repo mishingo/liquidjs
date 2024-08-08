@@ -3,6 +3,7 @@ import { ForloopDrop } from '../drop';
 import { toEnumerable } from '../util';
 import { TopLevelToken, assert, Liquid, Token, Template, evalQuotedToken, TypeGuards, Tokenizer, evalToken, Hash, Emitter, TagToken, Context, Tag } from '..';
 import { Parser } from '../parser';
+import * as path from 'path';
 
 export type ParsedFileName = Template[] | Token | string | undefined;
 
@@ -24,7 +25,9 @@ export default class extends Tag {
     const filename = (yield renderFilePath(this['file'], ctx, liquid)) as string;
     assert(filename, () => `illegal file path "${filename}"`);
     
-    const filepath = `${__dirname}/src/content_blocks/${filename}.liquid`;
+    // Use path module to construct the file path dynamically
+    const projectRoot = process.cwd(); // Gets the current working directory
+    const filepath = path.join(projectRoot, 'src', 'content_blocks', `${filename}.liquid`);
     
     const childCtx = ctx.spawn();
     const scope = childCtx.bottom();
