@@ -89,6 +89,10 @@ export class Tokenizer {
   readFilter (): FilterToken | null {
     this.skipBlank();
     if (this.end()) return null;
+    if (this.peek() === 'c' && this.input.slice(this.p, this.p + 15) === 'content_blocks.${') {
+      // Handle content_blocks tag
+      return null;
+    }
     this.assert(this.peek() === '|', `expected "|" before filter`);
     this.p++;
     const begin = this.p;
