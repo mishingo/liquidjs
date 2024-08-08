@@ -11,7 +11,7 @@ export default class extends Tag {
   private file: ParsedFileName;
   private currentFile?: string;
   private hash: Hash;
-  
+
   constructor(token: TagToken, remainTokens: TopLevelToken[], liquid: Liquid, parser: Parser) {
     super(token, remainTokens, liquid);
     const tokenizer = this.tokenizer;
@@ -19,12 +19,12 @@ export default class extends Tag {
     this.currentFile = token.file;
     this.hash = new Hash(tokenizer.remaining());
   }
-  
+
   * render(ctx: Context, emitter: Emitter): Generator<unknown, void, unknown> {
     const { liquid, hash } = this;
     const filename = (yield renderFilePath(this['file'], ctx, liquid)) as string;
     assert(filename, () => `illegal file path "${filename}"`);
-    
+
     // Use path module to construct the file path dynamically
     const projectRoot = process.cwd(); // Gets the current working directory
     const filepath = path.join(projectRoot, 'src', 'content_blocks', `${filename}.liquid`);

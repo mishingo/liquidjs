@@ -53,6 +53,8 @@ export declare class Tokenizer {
     readRange(): RangeToken | undefined;
     readValueOrThrow(): ValueToken;
     readQuoted(): QuotedToken | undefined;
+    readContentBlockTemplate(options: NormalizedFullOptions): TopLevelToken[];
+    readContentBlockToken(options: NormalizedFullOptions): TopLevelToken | undefined;
     readFileNameTemplate(options: NormalizedFullOptions): IterableIterator<TopLevelToken>;
     match(word: string): boolean;
     rmatch(pattern: string): boolean;

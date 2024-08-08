@@ -55,6 +55,9 @@ export interface LiquidOptions {
     /** The right delimiter for liquid outputs. **/
     outputDelimiterRight?: string;
     /** Whether input strings to date filter preserve the given timezone **/
+    attributeLeft?: string;
+    attributeRight?: string;
+    contentBlocksTag?: string;
     preserveTimezones?: boolean;
     /** Whether `trim*Left`/`trim*Right` is greedy. When set to `true`, all consecutive blank characters including `\n` will be trimmed regardless of line breaks. Defaults to `true`. */
     greedy?: boolean;
@@ -140,6 +143,9 @@ export interface NormalizedFullOptions extends NormalizedOptions {
     tagDelimiterRight: string;
     outputDelimiterLeft: string;
     outputDelimiterRight: string;
+    attributeLeft: string;
+    attributeRight: string;
+    contentBlocksTag: string;
     preserveTimezones: boolean;
     greedy: boolean;
     globals: object;

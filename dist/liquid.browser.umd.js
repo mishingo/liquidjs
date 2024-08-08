@@ -2116,6 +2116,9 @@
         tagDelimiterRight: '%}',
         outputDelimiterLeft: '{{',
         outputDelimiterRight: '}}',
+        attributeLeft: '${',
+        attributeRight: '}',
+        contentBlocksTag: 'content_blocks',
         preserveTimezones: false,
         strictFilters: false,
         strictVariables: false,
@@ -2562,7 +2565,7 @@
                         continue;
                     }
                 }
-                if (this.peek() === '.' && this.peek(1) !== '.') { // skip range syntax
+                if (this.peek() === '.' && this.peek(1) !== '..') { // skip range syntax
                     this.p++;
                     var prop = this.readNonEmptyIdentifier();
                     if (!prop)
@@ -2645,6 +2648,28 @@
                     escaped = true;
             }
             return new QuotedToken(this.input, begin, this.p, this.file);
+        };
+        Tokenizer.prototype.readContentBlockTemplate = function (options) {
+            var tokens = [];
+            while (this.p < this.N) {
+                var token = this.readContentBlockToken(options);
+                if (token)
+                    tokens.push(token);
+            }
+            return tokens;
+        };
+        Tokenizer.prototype.readContentBlockToken = function (options) {
+            var begin = this.p;
+            if (this.match('${')) {
+                this.p += 2; // skip ${
+                var nameBegin = this.p;
+                while (this.p < this.N && this.peek() !== '}')
+                    ++this.p;
+                var name_1 = this.input.slice(nameBegin, this.p);
+                this.p++; // skip }
+                return new TagToken("content_blocks.".concat(name_1), begin, this.p, options, this.file);
+            }
+            return undefined;
         };
         Tokenizer.prototype.readFileNameTemplate = function (options) {
             var outputDelimiterLeft, htmlStopStrings, htmlStopStringSet;
@@ -5653,7 +5678,7 @@
     }
 
     var tags = {
-        'content_block': default_1$l,
+        'content_blocks': default_1$l,
         assign: default_1,
         'for': default_1$1,
         capture: default_1$2,
@@ -6119,7 +6144,7 @@
     exports.CaptureTag = default_1$2;
     exports.CaseTag = default_1$3;
     exports.CommentTag = default_1$4;
-    exports.ContentBlockTag = default_1$l;
+    exports.ContentBlocksTag = default_1$l;
     exports.Context = Context;
     exports.ContinueTag = default_1$h;
     exports.CycleTag = default_1$8;

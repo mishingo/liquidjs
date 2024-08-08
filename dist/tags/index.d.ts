@@ -20,6 +20,6 @@ import EchoTag from './echo';
 import LiquidTag from './liquid';
 import InlineCommentTag from './inline-comment';
 import type { TagClass } from '../template/tag';
-import ContentBlockTag from './content_block';
+import ContentBlocksTag from './content_blocks';
 export declare const tags: Record<string, TagClass>;
-export { ContentBlockTag, AssignTag, ForTag, CaptureTag, CaseTag, CommentTag, IncludeTag, RenderTag, DecrementTag, IncrementTag, CycleTag, IfTag, LayoutTag, BlockTag, RawTag, TablerowTag, UnlessTag, BreakTag, ContinueTag, EchoTag, LiquidTag, InlineCommentTag };
+export { ContentBlocksTag, AssignTag, ForTag, CaptureTag, CaseTag, CommentTag, IncludeTag, RenderTag, DecrementTag, IncrementTag, CycleTag, IfTag, LayoutTag, BlockTag, RawTag, TablerowTag, UnlessTag, BreakTag, ContinueTag, EchoTag, LiquidTag, InlineCommentTag };

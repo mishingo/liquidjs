@@ -20,10 +20,10 @@ import EchoTag from './echo'
 import LiquidTag from './liquid'
 import InlineCommentTag from './inline-comment'
 import type { TagClass } from '../template/tag'
-import ContentBlockTag from './content_block';
+import ContentBlocksTag from './content_blocks';
 
 export const tags: Record<string, TagClass> = {
- 'content_block': ContentBlockTag,
+ 'content_blocks': ContentBlocksTag,
   assign: AssignTag,
   'for': ForTag,
   capture: CaptureTag,
@@ -47,4 +47,4 @@ export const tags: Record<string, TagClass> = {
   '#': InlineCommentTag
 }
 
-export { ContentBlockTag,AssignTag, ForTag, CaptureTag, CaseTag, CommentTag, IncludeTag, RenderTag, DecrementTag, IncrementTag, CycleTag, IfTag, LayoutTag, BlockTag, RawTag, TablerowTag, UnlessTag, BreakTag, ContinueTag, EchoTag, LiquidTag, InlineCommentTag }
+export { ContentBlocksTag,AssignTag, ForTag, CaptureTag, CaseTag, CommentTag, IncludeTag, RenderTag, DecrementTag, IncrementTag, CycleTag, IfTag, LayoutTag, BlockTag, RawTag, TablerowTag, UnlessTag, BreakTag, ContinueTag, EchoTag, LiquidTag, InlineCommentTag }

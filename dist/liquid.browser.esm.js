@@ -1680,6 +1680,9 @@ const defaultOptions = {
     tagDelimiterRight: '%}',
     outputDelimiterLeft: '{{',
     outputDelimiterRight: '}}',
+    attributeLeft: '${',
+    attributeRight: '}',
+    contentBlocksTag: 'content_blocks',
     preserveTimezones: false,
     strictFilters: false,
     strictVariables: false,
@@ -2106,7 +2109,7 @@ class Tokenizer {
                     continue;
                 }
             }
-            if (this.peek() === '.' && this.peek(1) !== '.') { // skip range syntax
+            if (this.peek() === '.' && this.peek(1) !== '..') { // skip range syntax
                 this.p++;
                 const prop = this.readNonEmptyIdentifier();
                 if (!prop)
@@ -2188,6 +2191,28 @@ class Tokenizer {
                 escaped = true;
         }
         return new QuotedToken(this.input, begin, this.p, this.file);
+    }
+    readContentBlockTemplate(options) {
+        const tokens = [];
+        while (this.p < this.N) {
+            const token = this.readContentBlockToken(options);
+            if (token)
+                tokens.push(token);
+        }
+        return tokens;
+    }
+    readContentBlockToken(options) {
+        const begin = this.p;
+        if (this.match('${')) {
+            this.p += 2; // skip ${
+            const nameBegin = this.p;
+            while (this.p < this.N && this.peek() !== '}')
+                ++this.p;
+            const name = this.input.slice(nameBegin, this.p);
+            this.p++; // skip }
+            return new TagToken(`content_blocks.${name}`, begin, this.p, options, this.file);
+        }
+        return undefined;
     }
     *readFileNameTemplate(options) {
         const { outputDelimiterLeft } = options;
@@ -4070,7 +4095,7 @@ class InlineCommentTag extends Tag {
     render() { }
 }
 
-class ContentBlockTag extends Tag {
+class ContentBlocksTag extends Tag {
     constructor(token, remainTokens, liquid, parser) {
         super(token, remainTokens, liquid);
         const tokenizer = this.tokenizer;
@@ -4122,7 +4147,7 @@ function* renderFilePath$1(file, ctx, liquid) {
 }
 
 const tags = {
-    'content_block': ContentBlockTag,
+    'content_blocks': ContentBlocksTag,
     assign: AssignTag,
     'for': ForTag,
     capture: CaptureTag,
@@ -4479,4 +4504,4 @@ class Liquid {
 /* istanbul ignore file */
 const version = '10.16.1';
 
-export { AssertionError, AssignTag, BlockTag, BreakTag, CaptureTag, CaseTag, CommentTag, ContentBlockTag, Context, ContinueTag, CycleTag, DecrementTag, Drop, EchoTag, Expression, Filter, ForTag, Hash, IfTag, IncludeTag, IncrementTag, InlineCommentTag, LayoutTag, Liquid, LiquidError, LiquidTag, Output, ParseError, ParseStream, RawTag, RenderError, RenderTag, TablerowTag, Tag, TagToken, Token, TokenKind, TokenizationError, Tokenizer, typeGuards as TypeGuards, UndefinedVariableError, UnlessTag, Value, assert, createTrie, defaultOperators, defaultOptions, evalQuotedToken, evalToken, filters, isFalsy, isTruthy, tags, toPromise, toValue, toValueSync, version };
+export { AssertionError, AssignTag, BlockTag, BreakTag, CaptureTag, CaseTag, CommentTag, ContentBlocksTag, Context, ContinueTag, CycleTag, DecrementTag, Drop, EchoTag, Expression, Filter, ForTag, Hash, IfTag, IncludeTag, IncrementTag, InlineCommentTag, LayoutTag, Liquid, LiquidError, LiquidTag, Output, ParseError, ParseStream, RawTag, RenderError, RenderTag, TablerowTag, Tag, TagToken, Token, TokenKind, TokenizationError, Tokenizer, typeGuards as TypeGuards, UndefinedVariableError, UnlessTag, Value, assert, createTrie, defaultOperators, defaultOptions, evalQuotedToken, evalToken, filters, isFalsy, isTruthy, tags, toPromise, toValue, toValueSync, version };
