@@ -5596,7 +5596,7 @@
                     case 1:
                         filename = (_d.sent());
                         assert(filename, function () { return "illegal file path \"".concat(filename, "\""); });
-                        filepath = "/src/content_blocks/".concat(filename, ".liquid");
+                        filepath = "src/content_blocks/".concat(filename, ".liquid");
                         childCtx = ctx.spawn();
                         scope = childCtx.bottom();
                         _b = __assign;

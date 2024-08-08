@@ -24,7 +24,7 @@ export default class extends Tag {
     const filename = (yield renderFilePath(this['file'], ctx, liquid)) as string;
     assert(filename, () => `illegal file path "${filename}"`);
     
-    const filepath = `/src/content_blocks/${filename}.liquid`;
+    const filepath = `src/content_blocks/${filename}.liquid`;
     
     const childCtx = ctx.spawn();
     const scope = childCtx.bottom();
