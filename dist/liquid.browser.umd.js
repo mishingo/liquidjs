@@ -2397,7 +2397,7 @@
                 }
                 // Ensure the tag ends with '}}'
                 if (this.input[this.p] === '}' && this.input[this.p + 1] === '}') {
-                    this.p += 2; // Move past the closing '}}'
+                    this.p += 3; // Move past the closing '}}'
                 }
                 else {
                     throw this.error('Tag not closed properly');
