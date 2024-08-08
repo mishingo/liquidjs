@@ -4061,7 +4061,64 @@ class InlineCommentTag extends Tag {
     render() { }
 }
 
+class ContentBlockTag extends Tag {
+    constructor(token, remainTokens, liquid, parser) {
+        super(token, remainTokens, liquid);
+        const tokenizer = this.tokenizer;
+        this.file = parseFilePath$1(tokenizer, this.liquid, parser);
+        this.currentFile = token.file;
+        this.hash = new Hash(tokenizer.remaining());
+    }
+    *render(ctx, emitter) {
+        const { liquid, hash } = this;
+        const filepath = (yield renderFilePath$1(this['file'], ctx, liquid));
+        assert(filepath, () => `illegal file path "${filepath}"`);
+        const childCtx = ctx.spawn();
+        const scope = childCtx.bottom();
+        __assign(scope, yield hash.render(ctx));
+        const templates = (yield liquid._parsePartialFile(filepath, childCtx.sync, this['currentFile']));
+        yield liquid.renderer.renderTemplates(templates, childCtx, emitter);
+    }
+}
+/**
+ * @return null for "none",
+ * @return Template[] for quoted with tags and/or filters
+ * @return Token for expression (not quoted)
+ * @throws TypeError if cannot read next token
+ */
+function parseFilePath$1(tokenizer, liquid, parser) {
+    if (liquid.options.dynamicPartials) {
+        const file = tokenizer.readValue();
+        tokenizer.assert(file, 'illegal file path');
+        if (file.getText() === 'none')
+            return;
+        if (isQuotedToken(file)) {
+            // for filenames like "files/{{file}}", eval as liquid template
+            const templates = parser.parse(evalQuotedToken(file));
+            return optimize$1(templates);
+        }
+        return file;
+    }
+    const tokens = [...tokenizer.readFileNameTemplate(liquid.options)];
+    const templates = optimize$1(parser.parseTokens(tokens));
+    return templates === 'none' ? undefined : templates;
+}
+function optimize$1(templates) {
+    // for filenames like "files/file.liquid", extract the string directly
+    if (templates.length === 1 && isHTMLToken(templates[0].token))
+        return templates[0].token.getContent();
+    return templates;
+}
+function* renderFilePath$1(file, ctx, liquid) {
+    if (typeof file === 'string')
+        return file;
+    if (Array.isArray(file))
+        return liquid.renderer.renderTemplates(file, ctx);
+    return yield evalToken(file, ctx);
+}
+
 const tags = {
+    'content_block': ContentBlockTag,
     assign: AssignTag,
     'for': ForTag,
     capture: CaptureTag,
@@ -4288,78 +4345,10 @@ var abortMessage = {
     }
 };
 
-const toKebabCase = (str) => str.match(/[A-Z]{2,}(?=[A-Z][a-z]+[0-9]*|\b)|[A-Z]?[a-z]+[0-9]*|[A-Z]|[0-9]+/g)
-    .map(x => x.toLocaleLowerCase())
-    .join('-');
-const renderContentBlocks = async (liquid, ctx, fileName) => {
-    //@ts-ignore
-    const customOpts = ctx.environments['__contentBlocks'];
-    const opts = {};
-    const root = ctx.opts.root.slice(0);
-    if (root.length === 1) {
-        const base = root[0];
-        let roots = ['./content_blocks', '../content_blocks'];
-        if (customOpts && customOpts.root && customOpts.root.length > 0) {
-            roots = typeof customOpts.root === 'string' ? [customOpts.root] : customOpts.root;
-        }
-        opts.root = roots.map(p => path.resolve(base, p));
-    }
-    const ext = (customOpts && customOpts.ext) || '.liquid';
-    let template;
-    try {
-        template = await liquid.parseFile(fileName, opts);
-    }
-    catch (err) {
-        try {
-            template = await liquid.parseFile(toKebabCase(fileName), opts);
-        }
-        catch (err) {
-            try {
-                template = await liquid.parseFile(fileName + ext, opts);
-            }
-            catch (err) {
-                template = await liquid.parseFile(toKebabCase(fileName) + ext, opts);
-            }
-        }
-    }
-    return liquid.render(template, ctx.getAll(), ctx.opts);
-};
-const ContentBlockTag = {
-    parse(tagToken, remainingTokens) {
-        const match = /content_blocks\.(\w+)/.exec(tagToken.args);
-        if (match) {
-            this.fileName = match[1];
-        }
-        else {
-            this.variable = tagToken.args.trim();
-        }
-    },
-    async render(ctx, emitter) {
-        let fileName;
-        if (this.fileName) {
-            fileName = this.fileName;
-        }
-        else if (this.variable) {
-            fileName = await this.liquid.evalValue(this.variable, ctx);
-        }
-        if (!fileName) {
-            throw new Error('Content block name is undefined');
-        }
-        const originBlocks = ctx.getRegister('blocks');
-        const originBlockMode = ctx.getRegister('blockMode');
-        ctx.setRegister('blocks', {});
-        ctx.setRegister('blockMode', 1); // BlockMode.OUTPUT is 1 in liquidjs 10.16.1
-        const html = await renderContentBlocks(this.liquid, ctx, fileName);
-        ctx.setRegister('blocks', originBlocks);
-        ctx.setRegister('blockMode', originBlockMode);
-        emitter.write(html);
-    }
-};
-
 const tags$1 = {
     'connected_content': connectedContent,
     'abort_message': abortMessage,
-    'content_blocks': ContentBlockTag
+    //'content_blocks': ContentBlockTag
 };
 
 class Liquid {
@@ -4478,6 +4467,7 @@ exports.BreakTag = BreakTag;
 exports.CaptureTag = CaptureTag;
 exports.CaseTag = CaseTag;
 exports.CommentTag = CommentTag;
+exports.ContentBlockTag = ContentBlockTag;
 exports.Context = Context;
 exports.ContinueTag = ContinueTag;
 exports.CycleTag = CycleTag;

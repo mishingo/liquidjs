@@ -4,10 +4,10 @@
  * Released under the MIT License.
  */
 (function (global, factory) {
-    typeof exports === 'object' && typeof module !== 'undefined' ? factory(exports, require('crypto'), require('request-promise-cache'), require('path')) :
-    typeof define === 'function' && define.amd ? define(['exports', 'crypto', 'request-promise-cache', 'path'], factory) :
-    (global = global || self, factory(global.liquidjs = {}, global.crypto, global.rp_, global.path));
-}(this, (function (exports, crypto, rp_, path) { 'use strict';
+    typeof exports === 'object' && typeof module !== 'undefined' ? factory(exports, require('crypto'), require('request-promise-cache')) :
+    typeof define === 'function' && define.amd ? define(['exports', 'crypto', 'request-promise-cache'], factory) :
+    (global = global || self, factory(global.liquidjs = {}, global.crypto, global.rp_));
+}(this, (function (exports, crypto, rp_) { 'use strict';
 
     /******************************************************************************
     Copyright (c) Microsoft Corporation.
@@ -5575,7 +5575,90 @@
         return default_1;
     }(Tag));
 
+    var default_1$l = /** @class */ (function (_super) {
+        __extends(default_1, _super);
+        function default_1(token, remainTokens, liquid, parser) {
+            var _this = _super.call(this, token, remainTokens, liquid) || this;
+            var tokenizer = _this.tokenizer;
+            _this.file = parseFilePath$1(tokenizer, _this.liquid, parser);
+            _this.currentFile = token.file;
+            _this.hash = new Hash(tokenizer.remaining());
+            return _this;
+        }
+        default_1.prototype.render = function (ctx, emitter) {
+            var _a, liquid, hash, filepath, childCtx, scope, _b, _c, templates;
+            return __generator(this, function (_d) {
+                switch (_d.label) {
+                    case 0:
+                        _a = this, liquid = _a.liquid, hash = _a.hash;
+                        return [4 /*yield*/, renderFilePath$1(this['file'], ctx, liquid)];
+                    case 1:
+                        filepath = (_d.sent());
+                        assert(filepath, function () { return "illegal file path \"".concat(filepath, "\""); });
+                        childCtx = ctx.spawn();
+                        scope = childCtx.bottom();
+                        _b = __assign;
+                        _c = [scope];
+                        return [4 /*yield*/, hash.render(ctx)];
+                    case 2:
+                        _b.apply(void 0, _c.concat([_d.sent()]));
+                        return [4 /*yield*/, liquid._parsePartialFile(filepath, childCtx.sync, this['currentFile'])];
+                    case 3:
+                        templates = (_d.sent());
+                        return [4 /*yield*/, liquid.renderer.renderTemplates(templates, childCtx, emitter)];
+                    case 4:
+                        _d.sent();
+                        return [2 /*return*/];
+                }
+            });
+        };
+        return default_1;
+    }(Tag));
+    /**
+     * @return null for "none",
+     * @return Template[] for quoted with tags and/or filters
+     * @return Token for expression (not quoted)
+     * @throws TypeError if cannot read next token
+     */
+    function parseFilePath$1(tokenizer, liquid, parser) {
+        if (liquid.options.dynamicPartials) {
+            var file = tokenizer.readValue();
+            tokenizer.assert(file, 'illegal file path');
+            if (file.getText() === 'none')
+                return;
+            if (isQuotedToken(file)) {
+                // for filenames like "files/{{file}}", eval as liquid template
+                var templates_1 = parser.parse(evalQuotedToken(file));
+                return optimize$1(templates_1);
+            }
+            return file;
+        }
+        var tokens = __spreadArray([], __read(tokenizer.readFileNameTemplate(liquid.options)), false);
+        var templates = optimize$1(parser.parseTokens(tokens));
+        return templates === 'none' ? undefined : templates;
+    }
+    function optimize$1(templates) {
+        // for filenames like "files/file.liquid", extract the string directly
+        if (templates.length === 1 && isHTMLToken(templates[0].token))
+            return templates[0].token.getContent();
+        return templates;
+    }
+    function renderFilePath$1(file, ctx, liquid) {
+        return __generator(this, function (_a) {
+            switch (_a.label) {
+                case 0:
+                    if (typeof file === 'string')
+                        return [2 /*return*/, file];
+                    if (Array.isArray(file))
+                        return [2 /*return*/, liquid.renderer.renderTemplates(file, ctx)];
+                    return [4 /*yield*/, evalToken(file, ctx)];
+                case 1: return [2 /*return*/, _a.sent()];
+            }
+        });
+    }
+
     var tags = {
+        'content_block': default_1$l,
         assign: default_1,
         'for': default_1$1,
         capture: default_1$2,
@@ -5877,115 +5960,10 @@
         }
     };
 
-    var toKebabCase = function (str) {
-        return str.match(/[A-Z]{2,}(?=[A-Z][a-z]+[0-9]*|\b)|[A-Z]?[a-z]+[0-9]*|[A-Z]|[0-9]+/g)
-            .map(function (x) { return x.toLocaleLowerCase(); })
-            .join('-');
-    };
-    var renderContentBlocks = function (liquid, ctx, fileName) { return __awaiter(void 0, void 0, void 0, function () {
-        var customOpts, opts, root, base_1, roots, ext, template, err_1, err_2, err_3;
-        return __generator(this, function (_a) {
-            switch (_a.label) {
-                case 0:
-                    customOpts = ctx.environments['__contentBlocks'];
-                    opts = {};
-                    root = ctx.opts.root.slice(0);
-                    if (root.length === 1) {
-                        base_1 = root[0];
-                        roots = ['./content_blocks', '../content_blocks'];
-                        if (customOpts && customOpts.root && customOpts.root.length > 0) {
-                            roots = typeof customOpts.root === 'string' ? [customOpts.root] : customOpts.root;
-                        }
-                        opts.root = roots.map(function (p) { return path.resolve(base_1, p); });
-                    }
-                    ext = (customOpts && customOpts.ext) || '.liquid';
-                    _a.label = 1;
-                case 1:
-                    _a.trys.push([1, 3, , 13]);
-                    return [4 /*yield*/, liquid.parseFile(fileName, opts)];
-                case 2:
-                    template = _a.sent();
-                    return [3 /*break*/, 13];
-                case 3:
-                    err_1 = _a.sent();
-                    _a.label = 4;
-                case 4:
-                    _a.trys.push([4, 6, , 12]);
-                    return [4 /*yield*/, liquid.parseFile(toKebabCase(fileName), opts)];
-                case 5:
-                    template = _a.sent();
-                    return [3 /*break*/, 12];
-                case 6:
-                    err_2 = _a.sent();
-                    _a.label = 7;
-                case 7:
-                    _a.trys.push([7, 9, , 11]);
-                    return [4 /*yield*/, liquid.parseFile(fileName + ext, opts)];
-                case 8:
-                    template = _a.sent();
-                    return [3 /*break*/, 11];
-                case 9:
-                    err_3 = _a.sent();
-                    return [4 /*yield*/, liquid.parseFile(toKebabCase(fileName) + ext, opts)];
-                case 10:
-                    template = _a.sent();
-                    return [3 /*break*/, 11];
-                case 11: return [3 /*break*/, 12];
-                case 12: return [3 /*break*/, 13];
-                case 13: return [2 /*return*/, liquid.render(template, ctx.getAll(), ctx.opts)];
-            }
-        });
-    }); };
-    var ContentBlockTag = {
-        parse: function (tagToken, remainingTokens) {
-            var match = /content_blocks\.(\w+)/.exec(tagToken.args);
-            if (match) {
-                this.fileName = match[1];
-            }
-            else {
-                this.variable = tagToken.args.trim();
-            }
-        },
-        render: function (ctx, emitter) {
-            return __awaiter(this, void 0, void 0, function () {
-                var fileName, originBlocks, originBlockMode, html;
-                return __generator(this, function (_a) {
-                    switch (_a.label) {
-                        case 0:
-                            if (!this.fileName) return [3 /*break*/, 1];
-                            fileName = this.fileName;
-                            return [3 /*break*/, 3];
-                        case 1:
-                            if (!this.variable) return [3 /*break*/, 3];
-                            return [4 /*yield*/, this.liquid.evalValue(this.variable, ctx)];
-                        case 2:
-                            fileName = _a.sent();
-                            _a.label = 3;
-                        case 3:
-                            if (!fileName) {
-                                throw new Error('Content block name is undefined');
-                            }
-                            originBlocks = ctx.getRegister('blocks');
-                            originBlockMode = ctx.getRegister('blockMode');
-                            ctx.setRegister('blocks', {});
-                            ctx.setRegister('blockMode', 1); // BlockMode.OUTPUT is 1 in liquidjs 10.16.1
-                            return [4 /*yield*/, renderContentBlocks(this.liquid, ctx, fileName)];
-                        case 4:
-                            html = _a.sent();
-                            ctx.setRegister('blocks', originBlocks);
-                            ctx.setRegister('blockMode', originBlockMode);
-                            emitter.write(html);
-                            return [2 /*return*/];
-                    }
-                });
-            });
-        }
-    };
-
     var tags$1 = {
         'connected_content': connectedContent,
         'abort_message': abortMessage,
-        'content_blocks': ContentBlockTag
+        //'content_blocks': ContentBlockTag
     };
 
     var Liquid = /** @class */ (function () {
@@ -6146,6 +6124,7 @@
     exports.CaptureTag = default_1$2;
     exports.CaseTag = default_1$3;
     exports.CommentTag = default_1$4;
+    exports.ContentBlockTag = default_1$l;
     exports.Context = Context;
     exports.ContinueTag = default_1$h;
     exports.CycleTag = default_1$8;
