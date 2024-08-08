@@ -1863,7 +1863,7 @@ class Tokenizer {
         this.skipBlank();
         if (this.end())
             return null;
-        if (this.peek() === 'c' && this.input.slice(this.p, this.p + 15) === 'content_blocks.${') {
+        if (this.input.slice(this.p, this.p + 18) === '{{content_blocks.${') {
             // Handle content_blocks tag
             return null;
         }
