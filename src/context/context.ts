@@ -126,6 +126,7 @@ export function readProperty (obj: Scope, key: PropertyKey, ownPropertyOnly: boo
   const value = readJSProperty(obj, key, ownPropertyOnly)
   if (value === undefined && obj instanceof Drop) return obj.liquidMethodMissing(key)
 
+    // Support Braze's operation
   if (key === 'first' && isArray(obj)) {
     // @ts-ignore
     return obj[0]

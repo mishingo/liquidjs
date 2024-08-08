@@ -2719,6 +2719,7 @@ function readProperty(obj, key, ownPropertyOnly) {
     const value = readJSProperty(obj, key, ownPropertyOnly);
     if (value === undefined && obj instanceof Drop)
         return obj.liquidMethodMissing(key);
+    // Support Braze's operation
     if (key === 'first' && isArray(obj)) {
         // @ts-ignore
         return obj[0];
@@ -4078,8 +4079,9 @@ class ContentBlockTag extends Tag {
     }
     *render(ctx, emitter) {
         const { liquid, hash } = this;
-        const filepath = (yield renderFilePath$1(this['file'], ctx, liquid));
-        assert(filepath, () => `illegal file path "${filepath}"`);
+        const filename = (yield renderFilePath$1(this['file'], ctx, liquid));
+        assert(filename, () => `illegal file path "${filename}"`);
+        const filepath = `/src/content_blocks/${filename}.liquid`;
         const childCtx = ctx.spawn();
         const scope = childCtx.bottom();
         __assign(scope, yield hash.render(ctx));
@@ -4087,12 +4089,6 @@ class ContentBlockTag extends Tag {
         yield liquid.renderer.renderTemplates(templates, childCtx, emitter);
     }
 }
-/**
- * @return null for "none",
- * @return Template[] for quoted with tags and/or filters
- * @return Token for expression (not quoted)
- * @throws TypeError if cannot read next token
- */
 function parseFilePath$1(tokenizer, liquid, parser) {
     if (liquid.options.dynamicPartials) {
         const file = tokenizer.readValue();
@@ -4100,7 +4096,6 @@ function parseFilePath$1(tokenizer, liquid, parser) {
         if (file.getText() === 'none')
             return;
         if (isQuotedToken(file)) {
-            // for filenames like "files/{{file}}", eval as liquid template
             const templates = parser.parse(evalQuotedToken(file));
             return optimize$1(templates);
         }
@@ -4111,7 +4106,6 @@ function parseFilePath$1(tokenizer, liquid, parser) {
     return templates === 'none' ? undefined : templates;
 }
 function optimize$1(templates) {
-    // for filenames like "files/file.liquid", extract the string directly
     if (templates.length === 1 && isHTMLToken(templates[0].token))
         return templates[0].token.getContent();
     return templates;
