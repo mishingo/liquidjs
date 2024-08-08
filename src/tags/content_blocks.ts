@@ -13,7 +13,8 @@ export default class extends Tag {
   constructor(token: TagToken, remainTokens: TopLevelToken[], liquid: Liquid, parser: Parser) {
     super(token, remainTokens, liquid);
     const tokenizer = this.tokenizer;
-    this.file = parseFilePath(tokenizer, this.liquid, parser);
+    //@ts-ignore
+    this.file = token.filename; // Use the filename from the token
     this.currentFile = token.file;
     this.hash = new Hash(tokenizer.remaining());
   }
@@ -21,7 +22,7 @@ export default class extends Tag {
   * render(ctx: Context, emitter: Emitter): Generator<unknown, void, unknown> {
     const { liquid, hash } = this;
     const filename = (yield renderFilePath(this['file'], ctx, liquid)) as string;
-    assert(filename, () => `[cb render]illegal file path "${filename}"`);
+    assert(filename, () => `illegal file path "${filename}"`);
 
     // Use path module to construct the file path dynamically
     const projectRoot = process.cwd(); // Gets the current working directory
@@ -37,19 +38,14 @@ export default class extends Tag {
 }
 
 export function parseFilePath(tokenizer: Tokenizer, liquid: Liquid, parser: Parser): ParsedFileName {
-  if (liquid.options.dynamicPartials) {
-    const file = tokenizer.readValue();
-    tokenizer.assert(file, '[cb parsefilepath]illegal file path');
-    if (file!.getText() === 'none') return;
-    if (TypeGuards.isQuotedToken(file)) {
-      const templates = parser.parse(evalQuotedToken(file));
-      return optimize(templates);
-    }
-    return file;
+  const file = tokenizer.readValue();
+  tokenizer.assert(file, 'illegal file path');
+  if (file!.getText() === 'none') return;
+  if (TypeGuards.isQuotedToken(file)) {
+    const templates = parser.parse(evalQuotedToken(file));
+    return optimize(templates);
   }
-  const tokens = [...tokenizer.readFileNameTemplate(liquid.options)];
-  const templates = optimize(parser.parseTokens(tokens));
-  return templates === 'none' ? undefined : templates;
+  return file;
 }
 
 function optimize(templates: Template[]): string | Template[] {

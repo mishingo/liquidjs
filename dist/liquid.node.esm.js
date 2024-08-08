@@ -1947,24 +1947,21 @@ class Tokenizer {
         this.p += '{{content_blocks.'.length;
         // Read the filename part dynamically
         let filename = '';
-        while (this.p < this.N && this.input[this.p] !== '}') {
+        while (this.p < this.N && this.input[this.p] !== '}' && this.input[this.p + 1] !== '}') {
             filename += this.input[this.p];
             this.p++;
         }
         // Ensure the tag ends with '}}'
-        if (this.input[this.p] === '}') {
-            this.p++;
-            if (this.input[this.p] === '}') {
-                this.p++;
-            }
-            else {
-                throw this.error('Tag not closed properly');
-            }
+        if (this.input[this.p] === '}' && this.input[this.p + 1] === '}') {
+            this.p += 2; // Move past the closing '}}'
         }
-        // Create a new TagToken with the filename included
+        else {
+            throw this.error('Tag not closed properly');
+        }
+        // Create a new TagToken
         const token = new TagToken(input, begin, this.p, options, file);
         //@ts-ignore
-        token.args = [filename];
+        token.filename = filename; // Add the filename as a property
         return token;
     }
     readToDelimiter(delimiter, respectQuoted = false) {
@@ -4113,14 +4110,15 @@ class ContentBlocksTag extends Tag {
     constructor(token, remainTokens, liquid, parser) {
         super(token, remainTokens, liquid);
         const tokenizer = this.tokenizer;
-        this.file = parseFilePath$1(tokenizer, this.liquid, parser);
+        //@ts-ignore
+        this.file = token.filename; // Use the filename from the token
         this.currentFile = token.file;
         this.hash = new Hash(tokenizer.remaining());
     }
     *render(ctx, emitter) {
         const { liquid, hash } = this;
         const filename = (yield renderFilePath$1(this['file'], ctx, liquid));
-        assert(filename, () => `[cb render]illegal file path "${filename}"`);
+        assert(filename, () => `illegal file path "${filename}"`);
         // Use path module to construct the file path dynamically
         const projectRoot = process.cwd(); // Gets the current working directory
         const filepath = join$1(projectRoot, 'src', 'content_blocks', `${filename}.liquid`);
@@ -4130,27 +4128,6 @@ class ContentBlocksTag extends Tag {
         const templates = (yield liquid._parsePartialFile(filepath, childCtx.sync, this['currentFile']));
         yield liquid.renderer.renderTemplates(templates, childCtx, emitter);
     }
-}
-function parseFilePath$1(tokenizer, liquid, parser) {
-    if (liquid.options.dynamicPartials) {
-        const file = tokenizer.readValue();
-        tokenizer.assert(file, '[cb parsefilepath]illegal file path');
-        if (file.getText() === 'none')
-            return;
-        if (isQuotedToken(file)) {
-            const templates = parser.parse(evalQuotedToken(file));
-            return optimize$1(templates);
-        }
-        return file;
-    }
-    const tokens = [...tokenizer.readFileNameTemplate(liquid.options)];
-    const templates = optimize$1(parser.parseTokens(tokens));
-    return templates === 'none' ? undefined : templates;
-}
-function optimize$1(templates) {
-    if (templates.length === 1 && isHTMLToken(templates[0].token))
-        return templates[0].token.getContent();
-    return templates;
 }
 function* renderFilePath$1(file, ctx, liquid) {
     if (typeof file === 'string')

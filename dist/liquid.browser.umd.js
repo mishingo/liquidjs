@@ -2389,24 +2389,21 @@
             this.p += '{{content_blocks.'.length;
             // Read the filename part dynamically
             var filename = '';
-            while (this.p < this.N && this.input[this.p] !== '}') {
+            while (this.p < this.N && this.input[this.p] !== '}' && this.input[this.p + 1] !== '}') {
                 filename += this.input[this.p];
                 this.p++;
             }
             // Ensure the tag ends with '}}'
-            if (this.input[this.p] === '}') {
-                this.p++;
-                if (this.input[this.p] === '}') {
-                    this.p++;
-                }
-                else {
-                    throw this.error('Tag not closed properly');
-                }
+            if (this.input[this.p] === '}' && this.input[this.p + 1] === '}') {
+                this.p += 2; // Move past the closing '}}'
             }
-            // Create a new TagToken with the filename included
+            else {
+                throw this.error('Tag not closed properly');
+            }
+            // Create a new TagToken
             var token = new TagToken(input, begin, this.p, options, file);
             //@ts-ignore
-            token.args = [filename];
+            token.filename = filename; // Add the filename as a property
             return token;
         };
         Tokenizer.prototype.readToDelimiter = function (delimiter, respectQuoted) {
@@ -5613,7 +5610,8 @@
         function default_1(token, remainTokens, liquid, parser) {
             var _this = _super.call(this, token, remainTokens, liquid) || this;
             var tokenizer = _this.tokenizer;
-            _this.file = parseFilePath$1(tokenizer, _this.liquid, parser);
+            //@ts-ignore
+            _this.file = token.filename; // Use the filename from the token
             _this.currentFile = token.file;
             _this.hash = new Hash(tokenizer.remaining());
             return _this;
@@ -5627,7 +5625,7 @@
                         return [4 /*yield*/, renderFilePath$1(this['file'], ctx, liquid)];
                     case 1:
                         filename = (_d.sent());
-                        assert(filename, function () { return "[cb render]illegal file path \"".concat(filename, "\""); });
+                        assert(filename, function () { return "illegal file path \"".concat(filename, "\""); });
                         projectRoot = process.cwd();
                         filepath = path.join(projectRoot, 'src', 'content_blocks', "".concat(filename, ".liquid"));
                         childCtx = ctx.spawn();
@@ -5649,27 +5647,6 @@
         };
         return default_1;
     }(Tag));
-    function parseFilePath$1(tokenizer, liquid, parser) {
-        if (liquid.options.dynamicPartials) {
-            var file = tokenizer.readValue();
-            tokenizer.assert(file, '[cb parsefilepath]illegal file path');
-            if (file.getText() === 'none')
-                return;
-            if (isQuotedToken(file)) {
-                var templates_1 = parser.parse(evalQuotedToken(file));
-                return optimize$1(templates_1);
-            }
-            return file;
-        }
-        var tokens = __spreadArray([], __read(tokenizer.readFileNameTemplate(liquid.options)), false);
-        var templates = optimize$1(parser.parseTokens(tokens));
-        return templates === 'none' ? undefined : templates;
-    }
-    function optimize$1(templates) {
-        if (templates.length === 1 && isHTMLToken(templates[0].token))
-            return templates[0].token.getContent();
-        return templates;
-    }
     function renderFilePath$1(file, ctx, liquid) {
         return __generator(this, function (_a) {
             switch (_a.label) {
