@@ -1909,6 +1909,8 @@ class Tokenizer {
             return this.readTagToken(options);
         if (this.match(outputDelimiterLeft))
             return this.readOutputToken(options);
+        if (this.match('content_blocks.'))
+            return this.readContentBlocksToken(options); // Handle content_blocks tag
         return this.readHTMLToken([tagDelimiterLeft, outputDelimiterLeft]);
     }
     readHTMLToken(stopStrings) {
@@ -1929,6 +1931,14 @@ class Tokenizer {
         const token = new TagToken(input, begin, this.p, options, file);
         if (token.name === 'raw')
             this.rawBeginAt = begin;
+        return token;
+    }
+    readContentBlocksToken(options) {
+        const { file, input } = this;
+        const begin = this.p;
+        this.p += 'content_blocks.'.length; // Skip content_blocks.
+        this.readToDelimiter(options.outputDelimiterRight);
+        const token = new TagToken(input, begin, this.p, options, file);
         return token;
     }
     readToDelimiter(delimiter, respectQuoted = false) {
@@ -2191,28 +2201,6 @@ class Tokenizer {
                 escaped = true;
         }
         return new QuotedToken(this.input, begin, this.p, this.file);
-    }
-    readContentBlockTemplate(options) {
-        const tokens = [];
-        while (this.p < this.N) {
-            const token = this.readContentBlockToken(options);
-            if (token)
-                tokens.push(token);
-        }
-        return tokens;
-    }
-    readContentBlockToken(options) {
-        const begin = this.p;
-        if (this.match('${')) {
-            this.p += 2; // skip ${
-            const nameBegin = this.p;
-            while (this.p < this.N && this.peek() !== '}')
-                ++this.p;
-            const name = this.input.slice(nameBegin, this.p);
-            this.p++; // skip }
-            return new TagToken(`content_blocks.${name}`, begin, this.p, options, this.file);
-        }
-        return undefined;
     }
     *readFileNameTemplate(options) {
         const { outputDelimiterLeft } = options;

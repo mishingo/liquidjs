@@ -24,6 +24,7 @@ export declare class Tokenizer {
     readTopLevelToken(options: NormalizedFullOptions): TopLevelToken;
     readHTMLToken(stopStrings: string[]): HTMLToken;
     readTagToken(options: NormalizedFullOptions): TagToken;
+    readContentBlocksToken(options: NormalizedFullOptions): TagToken;
     readToDelimiter(delimiter: string, respectQuoted?: boolean): number;
     readOutputToken(options?: NormalizedFullOptions): OutputToken;
     readEndrawOrRawContent(options: NormalizedFullOptions): HTMLToken | TagToken;
@@ -53,8 +54,6 @@ export declare class Tokenizer {
     readRange(): RangeToken | undefined;
     readValueOrThrow(): ValueToken;
     readQuoted(): QuotedToken | undefined;
-    readContentBlockTemplate(options: NormalizedFullOptions): TopLevelToken[];
-    readContentBlockToken(options: NormalizedFullOptions): TopLevelToken | undefined;
     readFileNameTemplate(options: NormalizedFullOptions): IterableIterator<TopLevelToken>;
     match(word: string): boolean;
     rmatch(pattern: string): boolean;

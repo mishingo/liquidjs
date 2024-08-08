@@ -2357,6 +2357,8 @@
                 return this.readTagToken(options);
             if (this.match(outputDelimiterLeft))
                 return this.readOutputToken(options);
+            if (this.match('content_blocks.'))
+                return this.readContentBlocksToken(options); // Handle content_blocks tag
             return this.readHTMLToken([tagDelimiterLeft, outputDelimiterLeft]);
         };
         Tokenizer.prototype.readHTMLToken = function (stopStrings) {
@@ -2378,6 +2380,14 @@
             var token = new TagToken(input, begin, this.p, options, file);
             if (token.name === 'raw')
                 this.rawBeginAt = begin;
+            return token;
+        };
+        Tokenizer.prototype.readContentBlocksToken = function (options) {
+            var _a = this, file = _a.file, input = _a.input;
+            var begin = this.p;
+            this.p += 'content_blocks.'.length; // Skip content_blocks.
+            this.readToDelimiter(options.outputDelimiterRight);
+            var token = new TagToken(input, begin, this.p, options, file);
             return token;
         };
         Tokenizer.prototype.readToDelimiter = function (delimiter, respectQuoted) {
@@ -2648,28 +2658,6 @@
                     escaped = true;
             }
             return new QuotedToken(this.input, begin, this.p, this.file);
-        };
-        Tokenizer.prototype.readContentBlockTemplate = function (options) {
-            var tokens = [];
-            while (this.p < this.N) {
-                var token = this.readContentBlockToken(options);
-                if (token)
-                    tokens.push(token);
-            }
-            return tokens;
-        };
-        Tokenizer.prototype.readContentBlockToken = function (options) {
-            var begin = this.p;
-            if (this.match('${')) {
-                this.p += 2; // skip ${
-                var nameBegin = this.p;
-                while (this.p < this.N && this.peek() !== '}')
-                    ++this.p;
-                var name_1 = this.input.slice(nameBegin, this.p);
-                this.p++; // skip }
-                return new TagToken("content_blocks.".concat(name_1), begin, this.p, options, this.file);
-            }
-            return undefined;
         };
         Tokenizer.prototype.readFileNameTemplate = function (options) {
             var outputDelimiterLeft, htmlStopStrings, htmlStopStringSet;
