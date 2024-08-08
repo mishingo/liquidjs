@@ -7,6 +7,7 @@ import { promises as fs } from 'fs';
 const identifier = /[\w-]+[?]?/;
 const attribute = new RegExp(`^\\s*content_blocks\\s*\\$\\{\\s*(${identifier.source})\\s*\\}\\s*$`);
 
+// Directory where content blocks are stored
 const contentBlocksDirectory = './src/content_blocks';
 
 const renderContentBlocks = async (liquid: Liquid, ctx: Context, fileName: string) => {
@@ -50,6 +51,7 @@ const contentBlocksTag: TagImplOptions = {
       const html = await renderContentBlocks(this.liquid, ctx, fileName);
       return html;
     } catch (err) {
+      //@ts-ignore
       throw new Error(`Error rendering content blocks: ${err.message}`);
     }
   }
