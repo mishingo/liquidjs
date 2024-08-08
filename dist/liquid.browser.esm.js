@@ -1860,7 +1860,7 @@ class Tokenizer {
             // Handle content_blocks tag
             return null;
         }
-        this.assert(this.peek() === '|', `expected "|" before filter`);
+        this.assert(this.peek() === '|', `expected "|" before filter ${this.input}`);
         this.p++;
         const begin = this.p;
         const name = this.readIdentifier();
