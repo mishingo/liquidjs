@@ -2303,11 +2303,7 @@
             this.skipBlank();
             if (this.end())
                 return null;
-            if (this.input.slice(this.p, this.p + 18) === '{{content_blocks.${') {
-                // Handle content_blocks tag
-                return null;
-            }
-            this.assert(this.peek() === '|', "expected \"|\" before filter ".concat(this.input.slice(this.p, this.p + 18)));
+            this.assert(this.peek() === '|', "expected \"|\" before filter");
             this.p++;
             var begin = this.p;
             var name = this.readIdentifier();
