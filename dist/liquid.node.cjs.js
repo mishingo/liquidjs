@@ -1822,7 +1822,7 @@ class Tokenizer {
             // Handle content_blocks tag
             return null;
         }
-        this.assert(this.peek() === '|', `expected "|" before filter ${this.input}`);
+        this.assert(this.peek() === '|', `expected "|" before filter ${this.input.slice(this.p, this.p + 18)}`);
         this.p++;
         const begin = this.p;
         const name = this.readIdentifier();

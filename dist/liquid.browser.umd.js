@@ -2307,7 +2307,7 @@
                 // Handle content_blocks tag
                 return null;
             }
-            this.assert(this.peek() === '|', "expected \"|\" before filter ".concat(this.input));
+            this.assert(this.peek() === '|', "expected \"|\" before filter ".concat(this.input.slice(this.p, this.p + 18)));
             this.p++;
             var begin = this.p;
             var name = this.readIdentifier();
