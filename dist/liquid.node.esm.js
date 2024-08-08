@@ -8,6 +8,7 @@ import { sep, extname, resolve as resolve$1, dirname as dirname$1 } from 'path';
 import { statSync, readFileSync as readFileSync$1, stat, readFile as readFile$1 } from 'fs';
 import { createHash, createHmac } from 'crypto';
 import * as rp_ from 'request-promise-cache';
+import { readFile as readFile$2 } from 'fs/promises';
 
 class Token {
     constructor(kind, input, begin, end, file) {
@@ -4306,64 +4307,58 @@ var abortMessage = {
     }
 };
 
-const identifier = /[\w-]+[?]?/;
-const attribute = new RegExp(`^\\s*(?:(${identifier.source})\\.)?\\$\\{\\s*([\\s\\S]+?)\\s*\\}\\s*$`);
 const toKebabCase = (str) => str.match(/[A-Z]{2,}(?=[A-Z][a-z]+[0-9]*|\b)|[A-Z]?[a-z]+[0-9]*|[A-Z]|[0-9]+/g)
     .map(x => x.toLocaleLowerCase())
     .join('-');
-const renderContentBlocks = function (liquid, ctx, fileName) {
-    return __awaiter(this, void 0, void 0, function* () {
-        const customOpts = ctx.environments['__contentBlocks'];
-        const opts = {};
-        const root = ctx.opts.root.slice(0);
-        if (root.length === 1) {
-            const base = root[0];
-            let roots = ['./content_blocks', '../content_blocks'];
-            if (customOpts && customOpts.root && customOpts.root.length > 0) {
-                roots = isString(customOpts.root) ? [customOpts.root] : customOpts.root;
-            }
-            opts['root'] = roots.map(p => resolve$1(base, p));
-        }
-        const ext = (customOpts && customOpts.ext) || '.liquid';
-        let template;
+//@ts-ignore
+const renderContentBlocks = (liquid, ctx, fileName) => __awaiter(void 0, void 0, void 0, function* () {
+    const customOpts = ctx.environments['__contentBlocks'];
+    const roots = (customOpts === null || customOpts === void 0 ? void 0 : customOpts.root) || ['./content_blocks', '../content_blocks'];
+    const ext = (customOpts === null || customOpts === void 0 ? void 0 : customOpts.ext) || '.liquid';
+    const base = ctx.opts.root[0];
+    //@ts-ignore
+    const opts = { root: roots.map(p => resolve$1(base, p)) };
+    let fileContent;
+    try {
+        fileContent = yield readFile$2(resolve$1(base, ...roots, `${fileName}${ext}`), 'utf8');
+    }
+    catch (err) {
         try {
-            template = yield liquid.parseFile(fileName);
+            fileContent = yield readFile$2(resolve$1(base, ...roots, `${toKebabCase(fileName)}${ext}`), 'utf8');
         }
         catch (err) {
-            try {
-                template = yield liquid.parseFile(toKebabCase(fileName));
-            }
-            catch (err) {
-                try {
-                    template = yield liquid.parseFile(fileName + ext);
-                }
-                catch (err) {
-                    template = yield liquid.parseFile(toKebabCase(fileName) + ext);
-                }
-            }
+            console.error(`Error reading file for ${fileName}:`, err);
+            return '';
         }
-        return liquid.renderer.renderTemplates(template, ctx);
-    });
-};
+    }
+    const template = liquid.parse(fileContent);
+    return yield liquid.render(template, ctx);
+});
 var contentBlocks = {
+    //@ts-ignore
     parse: function (tagToken) {
-        //@ts-ignore
-        const match = tagToken.value.match(attribute);
+        const match = tagToken.value.match(/^\s*content_blocks\.(\S+)\s*$/);
         if (!match) {
-            //@ts-ignore
-            throw new Error(`illegal token ${tagToken.raw}`);
+            throw new Error(`Illegal token ${tagToken.raw}`);
         }
-        this.fileName = match[2];
+        //@ts-ignore
+        this.fileName = match[1];
+        //@ts-ignore
         this.extension = '.liquid';
     },
+    //@ts-ignore
     render: function (ctx) {
         return __awaiter(this, void 0, void 0, function* () {
-            assert(this.fileName, `content blocks name is undefined`);
+            //@ts-ignore
+            if (!this.fileName) {
+                throw new Error(`Content block name is undefined`);
+            }
             const originBlocks = ctx.getRegister('blocks');
             const originBlockMode = ctx.getRegister('blockMode');
             ctx.setRegister('blocks', {});
             ctx.setRegister('blockMode', BlockMode.OUTPUT);
-            const html = renderContentBlocks(this.liquid, ctx, this.fileName);
+            //@ts-ignore
+            const html = yield renderContentBlocks(this.liquid, ctx, this.fileName);
             ctx.setRegister('blocks', originBlocks);
             ctx.setRegister('blockMode', originBlockMode);
             return html;

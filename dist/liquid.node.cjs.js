@@ -12,6 +12,7 @@ var path = require('path');
 var fs$1 = require('fs');
 var crypto = require('crypto');
 var rp_ = require('request-promise-cache');
+var promises = require('fs/promises');
 
 class Token {
     constructor(kind, input, begin, end, file) {
@@ -4288,61 +4289,57 @@ var abortMessage = {
     }
 };
 
-const identifier = /[\w-]+[?]?/;
-const attribute = new RegExp(`^\\s*(?:(${identifier.source})\\.)?\\$\\{\\s*([\\s\\S]+?)\\s*\\}\\s*$`);
 const toKebabCase = (str) => str.match(/[A-Z]{2,}(?=[A-Z][a-z]+[0-9]*|\b)|[A-Z]?[a-z]+[0-9]*|[A-Z]|[0-9]+/g)
     .map(x => x.toLocaleLowerCase())
     .join('-');
-const renderContentBlocks = async function (liquid, ctx, fileName) {
+//@ts-ignore
+const renderContentBlocks = async (liquid, ctx, fileName) => {
     const customOpts = ctx.environments['__contentBlocks'];
-    const opts = {};
-    const root = ctx.opts.root.slice(0);
-    if (root.length === 1) {
-        const base = root[0];
-        let roots = ['./content_blocks', '../content_blocks'];
-        if (customOpts && customOpts.root && customOpts.root.length > 0) {
-            roots = isString(customOpts.root) ? [customOpts.root] : customOpts.root;
-        }
-        opts['root'] = roots.map(p => path.resolve(base, p));
-    }
-    const ext = (customOpts && customOpts.ext) || '.liquid';
-    let template;
+    const roots = customOpts?.root || ['./content_blocks', '../content_blocks'];
+    const ext = customOpts?.ext || '.liquid';
+    const base = ctx.opts.root[0];
+    //@ts-ignore
+    const opts = { root: roots.map(p => path.resolve(base, p)) };
+    let fileContent;
     try {
-        template = await liquid.parseFile(fileName);
+        fileContent = await promises.readFile(path.resolve(base, ...roots, `${fileName}${ext}`), 'utf8');
     }
     catch (err) {
         try {
-            template = await liquid.parseFile(toKebabCase(fileName));
+            fileContent = await promises.readFile(path.resolve(base, ...roots, `${toKebabCase(fileName)}${ext}`), 'utf8');
         }
         catch (err) {
-            try {
-                template = await liquid.parseFile(fileName + ext);
-            }
-            catch (err) {
-                template = await liquid.parseFile(toKebabCase(fileName) + ext);
-            }
+            console.error(`Error reading file for ${fileName}:`, err);
+            return '';
         }
     }
-    return liquid.renderer.renderTemplates(template, ctx);
+    const template = liquid.parse(fileContent);
+    return await liquid.render(template, ctx);
 };
 var contentBlocks = {
+    //@ts-ignore
     parse: function (tagToken) {
-        //@ts-ignore
-        const match = tagToken.value.match(attribute);
+        const match = tagToken.value.match(/^\s*content_blocks\.(\S+)\s*$/);
         if (!match) {
-            //@ts-ignore
-            throw new Error(`illegal token ${tagToken.raw}`);
+            throw new Error(`Illegal token ${tagToken.raw}`);
         }
-        this.fileName = match[2];
+        //@ts-ignore
+        this.fileName = match[1];
+        //@ts-ignore
         this.extension = '.liquid';
     },
+    //@ts-ignore
     render: async function (ctx) {
-        assert(this.fileName, `content blocks name is undefined`);
+        //@ts-ignore
+        if (!this.fileName) {
+            throw new Error(`Content block name is undefined`);
+        }
         const originBlocks = ctx.getRegister('blocks');
         const originBlockMode = ctx.getRegister('blockMode');
         ctx.setRegister('blocks', {});
         ctx.setRegister('blockMode', BlockMode.OUTPUT);
-        const html = renderContentBlocks(this.liquid, ctx, this.fileName);
+        //@ts-ignore
+        const html = await renderContentBlocks(this.liquid, ctx, this.fileName);
         ctx.setRegister('blocks', originBlocks);
         ctx.setRegister('blockMode', originBlockMode);
         return html;
