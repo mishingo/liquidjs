@@ -1,80 +1,58 @@
-import * as _ from '../../util/underscore'
 
-
-import { Value, Liquid, TopLevelToken, TagToken, Context, Tag } from '../..'
+import { Liquid, Context, TagToken } from '../..';
 import {TagImplOptions} from '../../template/tag-options-adapter'
+import { resolve, join } from 'path';
+import { promises as fs } from 'fs';
 
-import { assert } from '../../util/assert'
+const identifier = /[\w-]+[?]?/;
+const attribute = new RegExp(`^\\s*content_blocks\\s*\\$\\{\\s*(${identifier.source})\\s*\\}\\s*$`);
 
-import {BlockMode} from '../../context/block-mode'
-import { resolve } from 'path'
+const contentBlocksDirectory = './src/content_blocks';
 
-const identifier = /[\w-]+[?]?/
-const attribute = new RegExp(`^\\s*(?:(${identifier.source})\\.)?\\$\\{\\s*([\\s\\S]+?)\\s*\\}\\s*$`)
+const renderContentBlocks = async (liquid: Liquid, ctx: Context, fileName: string) => {
+  const filePath = join(contentBlocksDirectory, fileName);
 
-const toKebabCase = (str: String) =>
-  str!.match(/[A-Z]{2,}(?=[A-Z][a-z]+[0-9]*|\b)|[A-Z]?[a-z]+[0-9]*|[A-Z]|[0-9]+/g)!
-    .map(x => x.toLocaleLowerCase())
-    .join('-')
-
-const renderContentBlocks = async function (liquid: Liquid, ctx: Context, fileName: string) {
-  const customOpts = ctx.environments['__contentBlocks']
-
-  const opts = {}
-  const root = ctx.opts.root.slice(0)
-  if (root.length === 1) {
-    const base = root[0]
-    let roots = ['./content_blocks', '../content_blocks']
-    if (customOpts && customOpts.root && customOpts.root.length > 0) {
-      roots = _.isString(customOpts.root) ? [customOpts.root] : customOpts.root
-    }
-
-    opts['root'] = roots.map(p => resolve(base, p))
-  }
-
-  const ext = (customOpts && customOpts.ext) || '.liquid'
-
-  let template
+  // Read the template file
+  let templateContent;
   try {
-    template = await liquid.parseFile(fileName)
+    templateContent = await fs.readFile(filePath, 'utf8');
   } catch (err) {
-    try {
-      template = await liquid.parseFile(toKebabCase(fileName))
-    } catch (err) {
-      try {
-        template = await liquid.parseFile(fileName + ext)
-      } catch (err) {
-        template = await liquid.parseFile(toKebabCase(fileName) + ext)
-      }
-    }
+    throw new Error(`Could not read file at ${filePath}`);
   }
 
-  return liquid.renderer.renderTemplates(template, ctx)
-}
+  // Parse and render the template content
+  const template = await liquid.parse(templateContent);
+  return liquid.renderer.renderTemplates(template, ctx);
+};
 
-export default <TagImplOptions>{
+const contentBlocksTag: TagImplOptions = {
   parse: function (tagToken: TagToken) {
     //@ts-ignore
-    const match = tagToken.value.match(attribute)
+    const match = tagToken.value.match(attribute);
     if (!match) {
       //@ts-ignore
-      throw new Error(`illegal token ${tagToken.raw}`)
+      throw new Error(`Illegal token ${tagToken.raw}`);
     }
-    this.fileName = match[2]
-    this.extension = '.liquid'
+    this.variable = match[1]; // Extract the variable name
   },
   render: async function (ctx: Context) {
-    assert(this.fileName, `content blocks name is undefined`)
+    if (!this.variable) {
+      throw new Error(`No variable name found in tag`);
+    }
 
-    const originBlocks = ctx.getRegister('blocks')
-    const originBlockMode = ctx.getRegister('blockMode')
-    ctx.setRegister('blocks', {})
-    ctx.setRegister('blockMode', BlockMode.OUTPUT)
+    // Get the variable value from the context
+    const fileName = ctx.get(this.variable);
+    if (typeof fileName !== 'string') {
+      throw new Error(`Variable ${this.variable} is not a string`);
+    }
 
-    const html = renderContentBlocks(this.liquid, ctx, this.fileName)
-    ctx.setRegister('blocks', originBlocks)
-    ctx.setRegister('blockMode', originBlockMode)
-
-    return html
+    try {
+      const html = await renderContentBlocks(this.liquid, ctx, fileName);
+      return html;
+    } catch (err) {
+      throw new Error(`Error rendering content blocks: ${err.message}`);
+    }
   }
-}
+};
+
+export default contentBlocksTag;
