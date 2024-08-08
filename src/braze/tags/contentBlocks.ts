@@ -47,6 +47,7 @@ const renderContentBlocks = async (liquid: Liquid, ctx: Context, fileName: strin
 
 const ContentBlockTag: TagImplOptions = {
   parse(tagToken: TagToken, remainingTokens: TopLevelToken[]) {
+    console.log('parsingngngngngngngn')
     const match = /content_blocks\.(\w+)/.exec(tagToken.args);
     if (match) {
       this.fileName = match[1];
