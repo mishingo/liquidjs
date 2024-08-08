@@ -4101,7 +4101,7 @@ class ContentBlocksTag extends Tag {
     *render(ctx, emitter) {
         const { liquid, hash } = this;
         const filename = (yield renderFilePath$1(this['file'], ctx, liquid));
-        assert(filename, () => `illegal file path "${filename}"`);
+        assert(filename, () => `[cb render]illegal file path "${filename}"`);
         // Use path module to construct the file path dynamically
         const projectRoot = process.cwd(); // Gets the current working directory
         const filepath = join$1(projectRoot, 'src', 'content_blocks', `${filename}.liquid`);
@@ -4115,7 +4115,7 @@ class ContentBlocksTag extends Tag {
 function parseFilePath$1(tokenizer, liquid, parser) {
     if (liquid.options.dynamicPartials) {
         const file = tokenizer.readValue();
-        tokenizer.assert(file, 'illegal file path');
+        tokenizer.assert(file, '[cb parseFilePath] illegal file path');
         if (file.getText() === 'none')
             return;
         if (isQuotedToken(file)) {

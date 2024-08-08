@@ -5608,7 +5608,7 @@
                         return [4 /*yield*/, renderFilePath$1(this['file'], ctx, liquid)];
                     case 1:
                         filename = (_d.sent());
-                        assert(filename, function () { return "illegal file path \"".concat(filename, "\""); });
+                        assert(filename, function () { return "[cb render]illegal file path \"".concat(filename, "\""); });
                         projectRoot = process.cwd();
                         filepath = path.join(projectRoot, 'src', 'content_blocks', "".concat(filename, ".liquid"));
                         childCtx = ctx.spawn();
@@ -5633,7 +5633,7 @@
     function parseFilePath$1(tokenizer, liquid, parser) {
         if (liquid.options.dynamicPartials) {
             var file = tokenizer.readValue();
-            tokenizer.assert(file, 'illegal file path');
+            tokenizer.assert(file, '[cb parseFilePath] illegal file path');
             if (file.getText() === 'none')
                 return;
             if (isQuotedToken(file)) {
