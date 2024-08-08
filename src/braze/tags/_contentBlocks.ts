@@ -1,16 +1,16 @@
 import * as _ from '../../util/underscore'
 
-
 import { Value, Liquid, TopLevelToken, TagToken, Context, Tag } from '../..'
 import {TagImplOptions} from '../../template/tag-options-adapter'
 
 import { assert } from '../../util/assert'
 
-import {BlockMode} from '../../context/block-mode'
+import { BlockMode } from '../../context/block-mode'
 import { resolve } from 'path'
 
 const identifier = /[\w-]+[?]?/
 const attribute = new RegExp(`^\\s*(?:(${identifier.source})\\.)?\\$\\{\\s*([\\s\\S]+?)\\s*\\}\\s*$`)
+
 
 const toKebabCase = (str: String) =>
   str!.match(/[A-Z]{2,}(?=[A-Z][a-z]+[0-9]*|\b)|[A-Z]?[a-z]+[0-9]*|[A-Z]|[0-9]+/g)!
