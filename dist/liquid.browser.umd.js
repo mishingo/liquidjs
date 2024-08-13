@@ -5623,30 +5623,33 @@
             return _this;
         }
         default_1.prototype.render = function (ctx, emitter) {
-            var _a, liquid, hash, filename, projectRoot, filepath, childCtx, scope, _b, _c, templates;
-            return __generator(this, function (_d) {
-                switch (_d.label) {
+            var _a, liquid, hash, filename, projectRoot, filepath, hashScope, childCtx, templates;
+            return __generator(this, function (_b) {
+                switch (_b.label) {
                     case 0:
                         _a = this, liquid = _a.liquid, hash = _a.hash;
                         return [4 /*yield*/, renderFilePath$1(this['file'], ctx, liquid)];
                     case 1:
-                        filename = (_d.sent());
+                        filename = (_b.sent());
                         assert(filename, function () { return "illegal file path \"".concat(filename, "\""); });
-                        projectRoot = process.cwd();
+                        projectRoot = process.cwd() // Gets the current working directory
+                        ;
                         filepath = path.join(projectRoot, 'src', 'content_blocks', "".concat(filename, ".liquid"));
-                        childCtx = ctx.spawn();
-                        scope = childCtx.bottom();
-                        _b = __assign;
-                        _c = [scope];
-                        return [4 /*yield*/, hash.render(ctx)];
+                        return [4 /*yield*/, hash.render(ctx)
+                            // Merge the hash scope with the current context
+                            //@ts-ignore
+                        ];
                     case 2:
-                        _b.apply(void 0, _c.concat([_d.sent()]));
+                        hashScope = _b.sent();
+                        childCtx = ctx.push(hashScope);
                         return [4 /*yield*/, liquid._parsePartialFile(filepath, childCtx.sync, this['currentFile'])];
                     case 3:
-                        templates = (_d.sent());
+                        templates = (_b.sent());
+                        //@ts-ignore
                         return [4 /*yield*/, liquid.renderer.renderTemplates(templates, childCtx, emitter)];
                     case 4:
-                        _d.sent();
+                        //@ts-ignore
+                        _b.sent();
                         return [2 /*return*/];
                 }
             });
