@@ -4121,9 +4121,12 @@ class ContentBlocksTag extends Tag {
         // Use path module to construct the file path dynamically
         const projectRoot = process.cwd(); // Gets the current working directory
         const filepath = join$1(projectRoot, 'src', 'content_blocks', `${filename}.liquid`);
+        // Create a child context that inherits from the current context
         const childCtx = ctx.spawn();
+        // Apply any variables from the hash (if applicable)
         const scope = childCtx.bottom();
         __assign(scope, yield hash.render(ctx));
+        // Parse and render the content block template with the inherited context
         const templates = (yield liquid._parsePartialFile(filepath, childCtx.sync, this['currentFile']));
         yield liquid.renderer.renderTemplates(templates, childCtx, emitter);
     }
