@@ -1,7 +1,7 @@
-import { __assign } from 'tslib'
-import { TopLevelToken, assert, Liquid, Token, Template, evalQuotedToken, TypeGuards, Tokenizer, evalToken, Hash, Emitter, TagToken, Context, Tag } from '..'
-import { Parser } from '../parser'
-import * as path from 'path'
+import { __assign } from 'tslib';
+import { TopLevelToken, assert, Liquid, Token, Template, evalQuotedToken, TypeGuards, Tokenizer, evalToken, Hash, Emitter, TagToken, Context, Tag } from '..';
+import { Parser } from '../parser';
+import * as path from 'path';
 
 export type ParsedFileName = Template[] | Token | string | undefined;
 
@@ -11,31 +11,35 @@ export default class extends Tag {
   private hash: Hash;
 
   constructor(token: TagToken, remainTokens: TopLevelToken[], liquid: Liquid, parser: Parser) {
-    super(token, remainTokens, liquid)
-    const tokenizer = this.tokenizer
+    super(token, remainTokens, liquid);
+    const tokenizer = this.tokenizer;
     //@ts-ignore
-    this.file = token.filename // Use the filename from the token
-    this.currentFile = token.file
-    this.hash = new Hash(tokenizer.remaining())
+    this.file = token.filename; // Use the filename from the token
+    this.currentFile = token.file;
+    this.hash = new Hash(tokenizer.remaining());
   }
 
   * render(ctx: Context, emitter: Emitter): Generator<unknown, void, unknown> {
     const { liquid, hash } = this;
     const filename = (yield renderFilePath(this['file'], ctx, liquid)) as string;
-    assert(filename, () => `illegal file path "${filename}"`)
+    assert(filename, () => `illegal file path "${filename}"`);
 
     // Use path module to construct the file path dynamically
     const projectRoot = process.cwd(); // Gets the current working directory
-    const filepath = path.join(projectRoot, 'src', 'content_blocks', `${filename}.liquid`)
-    // Create a child context that inherits from the current context
-    const childCtx = ctx.spawn();
+    const filepath = path.join(projectRoot, 'src', 'content_blocks', `${filename}.liquid`);
+    
+    // Render any hash variables
+    const hashScope = yield hash.render(ctx);
 
-    // Apply any variables from the hash (if applicable)
-    const scope = childCtx.bottom()
-    __assign(scope, yield hash.render(ctx))
+    // Spawn a new context that inherits from the current context
+    //@ts-ignore
+    const childCtx = ctx.push(hashScope);
+
     // Parse and render the content block template with the inherited context
-    const templates = (yield liquid._parsePartialFile(filepath, childCtx.sync, this['currentFile'])) as Template[]
-    yield liquid.renderer.renderTemplates(templates, childCtx, emitter)
+      //@ts-ignore
+    const templates = (yield liquid._parsePartialFile(filepath, childCtx.sync, this['currentFile'])) as Template[];
+      //@ts-ignore
+    yield liquid.renderer.renderTemplates(templates, childCtx, emitter);
   }
 }
 
