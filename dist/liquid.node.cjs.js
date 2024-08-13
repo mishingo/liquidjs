@@ -4110,17 +4110,16 @@ class ContentBlocksTag extends Tag {
         const { liquid, hash } = this;
         const filename = (yield renderFilePath$1(this['file'], ctx, liquid));
         assert(filename, () => `illegal file path "${filename}"`);
-        // Use path module to construct the file path dynamically
-        const projectRoot = process.cwd(); // Gets the current working directory
+        // Construct the file path for the content block
+        const projectRoot = process.cwd();
         const filepath = path.join(projectRoot, 'src', 'content_blocks', `${filename}.liquid`);
-        // Create a child context that inherits from the current context
-        const childCtx = ctx.spawn();
-        // Apply any variables from the hash (if applicable)
-        const scope = childCtx.bottom();
-        __assign(scope, yield hash.render(ctx));
-        // Parse and render the content block template with the inherited context
-        const templates = (yield liquid._parsePartialFile(filepath, childCtx.sync, this['currentFile']));
-        yield liquid.renderer.renderTemplates(templates, childCtx, emitter);
+        // Render any variables from the hash (if applicable)
+        const hashScope = yield hash.render(ctx);
+        // Merge the hash scope with the current context
+        __assign(ctx.environments, hashScope);
+        // Parse and render the content block template with the updated context
+        const templates = (yield liquid._parsePartialFile(filepath, ctx.sync, this['currentFile']));
+        yield liquid.renderer.renderTemplates(templates, ctx, emitter);
     }
 }
 function* renderFilePath$1(file, ctx, liquid) {
