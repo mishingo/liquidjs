@@ -1281,8 +1281,11 @@ function* evalToken(token, ctx, lenient = false) {
         return;
     // Handle `${...}` syntax
     if ('content' in token && typeof token.content === 'string') {
+        console.log('passed check');
         if (token.content.startsWith('${') && token.content.endsWith('}')) {
+            console.log('passed check 2');
             const variableName = token.content.slice(2, -1).trim();
+            console.log(ctx._get(variableName.split('.')));
             return yield ctx._get(variableName.split('.'));
         }
         return token.content;
