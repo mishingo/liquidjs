@@ -43,6 +43,38 @@ export function * evalToken (token: Token | undefined, ctx: Context, lenient = f
 function * evalPropertyAccessToken(token: PropertyAccessToken, ctx: Context, lenient: boolean): IterableIterator<unknown> {
   const props: string[] = [];
   for (const prop of token.props) {
+    let propValue = yield evalToken(prop, ctx, false);
+
+    if (typeof propValue === 'string') {
+      // Handle dynamic expressions within ${} only if propValue is a string
+      //@ts-ignore
+      if (propValue.startsWith('${') && propValue.endsWith('}')) {
+        //@ts-ignore
+        propValue = propValue.slice(2, -1); // remove the `${` and `}`
+      }
+    }
+    //@ts-ignore
+    props.push(propValue);
+  }
+
+  try {
+    if (token.variable) {
+      const variable = yield evalToken(token.variable, ctx, lenient);
+      return yield ctx._getFromScope(variable, props);
+    } else {
+      return yield ctx._get(props);
+    }
+  } catch (e) {
+    if (lenient && (e as Error).name === 'InternalUndefinedVariableError') return null;
+    throw new UndefinedVariableError(e as Error, token);
+  }
+}
+
+/*
+working without []
+function * evalPropertyAccessToken(token: PropertyAccessToken, ctx: Context, lenient: boolean): IterableIterator<unknown> {
+  const props: string[] = [];
+  for (const prop of token.props) {
     let propValue = (yield evalToken(prop, ctx, false)) as unknown as string;
     if (propValue.startsWith('${') && propValue.endsWith('}')) {
       propValue = propValue.slice(2, -1); // remove the `${` and `}`
@@ -61,7 +93,9 @@ function * evalPropertyAccessToken(token: PropertyAccessToken, ctx: Context, len
     throw (new UndefinedVariableError(e as Error, token));
   }
 }
+  */
 /*
+original
 function * evalPropertyAccessToken (token: PropertyAccessToken, ctx: Context, lenient: boolean): IterableIterator<unknown> {
   const props: string[] = []
   for (const prop of token.props) {

@@ -1275,10 +1275,16 @@ function* evalToken(token, ctx, lenient = false) {
 function* evalPropertyAccessToken(token, ctx, lenient) {
     const props = [];
     for (const prop of token.props) {
-        let propValue = (yield evalToken(prop, ctx, false));
-        if (propValue.startsWith('${') && propValue.endsWith('}')) {
-            propValue = propValue.slice(2, -1); // remove the `${` and `}`
+        let propValue = yield evalToken(prop, ctx, false);
+        if (typeof propValue === 'string') {
+            // Handle dynamic expressions within ${} only if propValue is a string
+            //@ts-ignore
+            if (propValue.startsWith('${') && propValue.endsWith('}')) {
+                //@ts-ignore
+                propValue = propValue.slice(2, -1); // remove the `${` and `}`
+            }
         }
+        //@ts-ignore
         props.push(propValue);
     }
     try {
@@ -1293,10 +1299,35 @@ function* evalPropertyAccessToken(token, ctx, lenient) {
     catch (e) {
         if (lenient && e.name === 'InternalUndefinedVariableError')
             return null;
-        throw (new UndefinedVariableError(e, token));
+        throw new UndefinedVariableError(e, token);
     }
 }
 /*
+working without []
+function * evalPropertyAccessToken(token: PropertyAccessToken, ctx: Context, lenient: boolean): IterableIterator<unknown> {
+  const props: string[] = [];
+  for (const prop of token.props) {
+    let propValue = (yield evalToken(prop, ctx, false)) as unknown as string;
+    if (propValue.startsWith('${') && propValue.endsWith('}')) {
+      propValue = propValue.slice(2, -1); // remove the `${` and `}`
+    }
+    props.push(propValue);
+  }
+  try {
+    if (token.variable) {
+      const variable = yield evalToken(token.variable, ctx, lenient);
+      return yield ctx._getFromScope(variable, props);
+    } else {
+      return yield ctx._get(props);
+    }
+  } catch (e) {
+    if (lenient && (e as Error).name === 'InternalUndefinedVariableError') return null;
+    throw (new UndefinedVariableError(e as Error, token));
+  }
+}
+  */
+/*
+original
 function * evalPropertyAccessToken (token: PropertyAccessToken, ctx: Context, lenient: boolean): IterableIterator<unknown> {
   const props: string[] = []
   for (const prop of token.props) {
@@ -2195,9 +2226,22 @@ class Tokenizer {
                     continue;
                 }
             }
-            if (this.peek() === '.' && this.peek(1) !== '.') { // skip range syntax
+            if (this.peek() === '.' && this.peek(1) !== '..') { // skip range syntax
                 this.p++;
-                const prop = this.readNonEmptyIdentifier();
+                let prop;
+                if (this.peek() === '$' && this.peek(1) === '{') {
+                    this.p += 2; // skip "${"
+                    const start = this.p;
+                    while (this.p < this.N && this.input[this.p] !== '}') {
+                        this.p++;
+                    }
+                    prop = new IdentifierToken(this.input, start, this.p, this.file);
+                    this.assert(this.input[this.p] === '}', `expected "}" at the end of dynamic property expression`);
+                    this.p++; // skip "}"
+                }
+                else {
+                    prop = this.readNonEmptyIdentifier();
+                }
                 if (!prop)
                     break;
                 props.push(prop);
@@ -2208,6 +2252,38 @@ class Tokenizer {
         return props;
     }
     /*
+    original
+    private readProperties (isBegin = true): (ValueToken | IdentifierToken)[] {
+      const props: (ValueToken | IdentifierToken)[] = []
+      while (true) {
+        if (this.peek() === '[') {
+          this.p++
+          const prop = this.readValue() || new IdentifierToken(this.input, this.p, this.p, this.file)
+          this.assert(this.readTo(']') !== -1, '[ not closed')
+          props.push(prop)
+          continue
+        }
+        if (isBegin && !props.length) {
+          const prop = this.readNonEmptyIdentifier()
+          if (prop) {
+            props.push(prop)
+            continue
+          }
+        }
+        if (this.peek() === '.' && this.peek(1) !== '.') { // skip range syntax
+          this.p++
+          const prop = this.readNonEmptyIdentifier()
+          if (!prop) break
+          props.push(prop)
+          continue
+        }
+        break
+      }
+      return props
+    }
+    */
+    /*
+    works
     private readProperties(isBegin = true): (ValueToken | IdentifierToken)[] {
       const props: (ValueToken | IdentifierToken)[] = [];
       while (true) {
