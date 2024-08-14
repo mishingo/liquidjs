@@ -1294,7 +1294,11 @@ function* evalToken(token, ctx, lenient = false) {
 function* evalPropertyAccessToken(token, ctx, lenient) {
     const props = [];
     for (const prop of token.props) {
-        props.push((yield evalToken(prop, ctx, false)));
+        let propValue = (yield evalToken(prop, ctx, false));
+        if (propValue.startsWith('${') && propValue.endsWith('}')) {
+            propValue = propValue.slice(2, -1); // remove the `${` and `}`
+        }
+        props.push(propValue);
     }
     try {
         if (token.variable) {
@@ -1311,6 +1315,25 @@ function* evalPropertyAccessToken(token, ctx, lenient) {
         throw (new UndefinedVariableError(e, token));
     }
 }
+/*
+function * evalPropertyAccessToken (token: PropertyAccessToken, ctx: Context, lenient: boolean): IterableIterator<unknown> {
+  const props: string[] = []
+  for (const prop of token.props) {
+    props.push((yield evalToken(prop, ctx, false)) as unknown as string)
+  }
+  try {
+    if (token.variable) {
+      const variable = yield evalToken(token.variable, ctx, lenient)
+      return yield ctx._getFromScope(variable, props)
+    } else {
+      return yield ctx._get(props)
+    }
+  } catch (e) {
+    if (lenient && (e as Error).name === 'InternalUndefinedVariableError') return null
+    throw (new UndefinedVariableError(e as Error, token))
+  }
+}
+  */
 function evalQuotedToken(token) {
     return token.content;
 }
@@ -1862,28 +1885,6 @@ class Tokenizer {
     }
     readFilteredValue() {
         const begin = this.p;
-        // Check for the `${}` syntax braze
-        if (this.match('${')) {
-            this.p += 2; // Skip `${`
-            const variableStart = this.p;
-            while (this.p < this.N && this.input[this.p] !== '}') {
-                this.p++;
-            }
-            if (this.p >= this.N || this.input[this.p] !== '}') {
-                throw new Error('Unterminated `${}` expression.');
-            }
-            const variableName = this.input.slice(variableStart, this.p).trim();
-            this.p++; // Skip `}`
-            // Wrap the extracted variable as an expression
-            const initial = new Expression((function* () {
-                //@ts-ignore
-                yield new IdentifierToken(variableName, variableStart, this.p, this.file);
-            })());
-            // Ensure expression validity and process filters
-            this.assert(initial.valid(), `invalid value expression: ${this.snapshot()}`);
-            const filters = this.readFilters();
-            return new FilteredValueToken(initial, filters, this.input, begin, this.p, this.file);
-        }
         const initial = this.readExpression();
         this.assert(initial.valid(), `invalid value expression: ${this.snapshot()}`);
         const filters = this.readFilters();
@@ -2192,9 +2193,12 @@ class Tokenizer {
                 let prop;
                 if (this.peek() === '$' && this.peek(1) === '{') {
                     this.p += 2; // skip "${"
-                    prop = this.readExpression(); // Read the inner expression
-                    this.assert(prop.valid(), `invalid dynamic property expression: ${this.snapshot()}`);
-                    this.assert(this.peek() === '}', `expected "}" at the end of dynamic property expression`);
+                    const start = this.p;
+                    while (this.p < this.N && this.input[this.p] !== '}') {
+                        this.p++;
+                    }
+                    prop = new IdentifierToken(this.input, start, this.p, this.file);
+                    this.assert(this.input[this.p] === '}', `expected "}" at the end of dynamic property expression`);
                     this.p++; // skip "}"
                 }
                 else {
@@ -2202,7 +2206,6 @@ class Tokenizer {
                 }
                 if (!prop)
                     break;
-                //@ts-ignore
                 props.push(prop);
                 continue;
             }
