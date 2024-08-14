@@ -1581,6 +1581,8 @@
                 case 0:
                     if (!token)
                         return [2 /*return*/];
+                    // Handle `${...}` syntax
+                    console.log('token', token, typeof token);
                     if (!('content' in token && typeof token.content === 'string')) return [3 /*break*/, 3];
                     console.log('passed check');
                     console.log(token.content);

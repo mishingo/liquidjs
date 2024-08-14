@@ -37,6 +37,7 @@ export class Expression {
 export function * evalToken (token: Token | undefined, ctx: Context, lenient = false): IterableIterator<unknown> {
   if (!token) return
   // Handle `${...}` syntax
+  console.log('token', token, typeof token)
   if ('content' in token && typeof token.content === 'string') {
     console.log('passed check')
     console.log(token.content)

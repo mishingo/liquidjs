@@ -1242,6 +1242,7 @@ function* evalToken(token, ctx, lenient = false) {
     if (!token)
         return;
     // Handle `${...}` syntax
+    console.log('token', token, typeof token);
     if ('content' in token && typeof token.content === 'string') {
         console.log('passed check');
         console.log(token.content);
