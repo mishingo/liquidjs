@@ -1810,6 +1810,14 @@ class Tokenizer {
     }
     *readExpressionTokens() {
         while (this.p < this.N) {
+            if (this.match('${')) {
+                this.p += 2; // Skip "${"
+                const expressionTokens = this.readExpressionTokens(); // Read the inner expression tokens
+                yield* expressionTokens;
+                this.assert(this.peek() === '}', `expected "}" at the end of dynamic expression`);
+                this.p++; // Skip "}"
+                continue;
+            }
             const operator = this.readOperator();
             if (operator) {
                 yield operator;
@@ -1823,6 +1831,23 @@ class Tokenizer {
             return;
         }
     }
+    /*
+    * readExpressionTokens (): IterableIterator<Token> {
+      while (this.p < this.N) {
+        const operator = this.readOperator()
+        if (operator) {
+          yield operator
+          continue
+        }
+        const operand = this.readValue()
+        if (operand) {
+          yield operand
+          continue
+        }
+        return
+      }
+    }
+      */
     readOperator() {
         this.skipBlank();
         const end = this.matchTrie(this.opTrie);
@@ -1847,11 +1872,31 @@ class Tokenizer {
     }
     readFilteredValue() {
         const begin = this.p;
+        // Check if the expression starts with ${ indicating a dynamic expression
+        if (this.match('${')) {
+            this.p += 2; // skip "${"
+            const dynamicExpression = this.readExpression(); // Parse the expression inside ${}
+            this.assert(dynamicExpression.valid(), `invalid value expression: ${this.snapshot()}`);
+            this.assert(this.peek() === '}', `expected "}" at the end of dynamic expression`);
+            this.p++; // skip "}"
+            // Return the dynamic expression directly as a FilteredValueToken
+            return new FilteredValueToken(dynamicExpression, [], this.input, begin, this.p, this.file);
+        }
         const initial = this.readExpression();
         this.assert(initial.valid(), `invalid value expression: ${this.snapshot()}`);
         const filters = this.readFilters();
         return new FilteredValueToken(initial, filters, this.input, begin, this.p, this.file);
     }
+    /*
+    readFilteredValue (): FilteredValueToken {
+      const begin = this.p;
+  
+      const initial = this.readExpression();
+      this.assert(initial.valid(), `invalid value expression: ${this.snapshot()}`);
+      const filters = this.readFilters();
+      return new FilteredValueToken(initial, filters, this.input, begin, this.p, this.file);
+    }
+      */
     readFilters() {
         const filters = [];
         while (true) {

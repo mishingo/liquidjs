@@ -32,7 +32,32 @@ export class Tokenizer {
   readExpression () {
     return new Expression(this.readExpressionTokens());
   }
+  * readExpressionTokens(): IterableIterator<Token> {
+    while (this.p < this.N) {
+      if (this.match('${')) {
+        this.p += 2; // Skip "${"
+        const expressionTokens = this.readExpressionTokens(); // Read the inner expression tokens
+        yield* expressionTokens;
+        this.assert(this.peek() === '}', `expected "}" at the end of dynamic expression`);
+        this.p++; // Skip "}"
+        continue;
+      }
 
+      const operator = this.readOperator();
+      if (operator) {
+        yield operator;
+        continue;
+      }
+      const operand = this.readValue();
+      if (operand) {
+        yield operand;
+        continue;
+      }
+      return;
+    }
+  }
+
+  /*
   * readExpressionTokens (): IterableIterator<Token> {
     while (this.p < this.N) {
       const operator = this.readOperator()
@@ -48,6 +73,7 @@ export class Tokenizer {
       return
     }
   }
+    */
 
   readOperator (): OperatorToken | undefined {
     this.skipBlank();
@@ -68,7 +94,24 @@ export class Tokenizer {
     if (info['needBoundary'] && isWord(this.peek(i - this.p))) return -1;
     return i;
   }
-
+  readFilteredValue(): FilteredValueToken {
+    const begin = this.p;
+    // Check if the expression starts with ${ indicating a dynamic expression
+    if (this.match('${')) {
+      this.p += 2; // skip "${"
+      const dynamicExpression = this.readExpression(); // Parse the expression inside ${}
+      this.assert(dynamicExpression.valid(), `invalid value expression: ${this.snapshot()}`);
+      this.assert(this.peek() === '}', `expected "}" at the end of dynamic expression`);
+      this.p++; // skip "}"
+      // Return the dynamic expression directly as a FilteredValueToken
+      return new FilteredValueToken(dynamicExpression, [], this.input, begin, this.p, this.file);
+    }
+    const initial = this.readExpression();
+    this.assert(initial.valid(), `invalid value expression: ${this.snapshot()}`);
+    const filters = this.readFilters();
+    return new FilteredValueToken(initial, filters, this.input, begin, this.p, this.file);
+  }  
+  /*
   readFilteredValue (): FilteredValueToken {
     const begin = this.p;
 
@@ -77,6 +120,7 @@ export class Tokenizer {
     const filters = this.readFilters();
     return new FilteredValueToken(initial, filters, this.input, begin, this.p, this.file);
   }
+    */
 
   readFilters (): FilterToken[] {
     const filters = [];

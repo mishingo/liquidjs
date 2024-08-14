@@ -2283,29 +2283,57 @@
             return new Expression(this.readExpressionTokens());
         };
         Tokenizer.prototype.readExpressionTokens = function () {
-            var operator, operand;
+            var expressionTokens, operator, operand;
             return __generator(this, function (_a) {
                 switch (_a.label) {
                     case 0:
-                        if (!(this.p < this.N)) return [3 /*break*/, 5];
-                        operator = this.readOperator();
-                        if (!operator) return [3 /*break*/, 2];
-                        return [4 /*yield*/, operator];
+                        if (!(this.p < this.N)) return [3 /*break*/, 7];
+                        if (!this.match('${')) return [3 /*break*/, 2];
+                        this.p += 2; // Skip "${"
+                        expressionTokens = this.readExpressionTokens();
+                        return [5 /*yield**/, // Read the inner expression tokens
+                            __values(expressionTokens)];
                     case 1:
                         _a.sent();
+                        this.assert(this.peek() === '}', "expected \"}\" at the end of dynamic expression");
+                        this.p++; // Skip "}"
                         return [3 /*break*/, 0];
                     case 2:
-                        operand = this.readValue();
-                        if (!operand) return [3 /*break*/, 4];
-                        return [4 /*yield*/, operand];
+                        operator = this.readOperator();
+                        if (!operator) return [3 /*break*/, 4];
+                        return [4 /*yield*/, operator];
                     case 3:
                         _a.sent();
                         return [3 /*break*/, 0];
-                    case 4: return [2 /*return*/];
-                    case 5: return [2 /*return*/];
+                    case 4:
+                        operand = this.readValue();
+                        if (!operand) return [3 /*break*/, 6];
+                        return [4 /*yield*/, operand];
+                    case 5:
+                        _a.sent();
+                        return [3 /*break*/, 0];
+                    case 6: return [2 /*return*/];
+                    case 7: return [2 /*return*/];
                 }
             });
         };
+        /*
+        * readExpressionTokens (): IterableIterator<Token> {
+          while (this.p < this.N) {
+            const operator = this.readOperator()
+            if (operator) {
+              yield operator
+              continue
+            }
+            const operand = this.readValue()
+            if (operand) {
+              yield operand
+              continue
+            }
+            return
+          }
+        }
+          */
         Tokenizer.prototype.readOperator = function () {
             this.skipBlank();
             var end = this.matchTrie(this.opTrie);
@@ -2330,11 +2358,31 @@
         };
         Tokenizer.prototype.readFilteredValue = function () {
             var begin = this.p;
+            // Check if the expression starts with ${ indicating a dynamic expression
+            if (this.match('${')) {
+                this.p += 2; // skip "${"
+                var dynamicExpression = this.readExpression(); // Parse the expression inside ${}
+                this.assert(dynamicExpression.valid(), "invalid value expression: ".concat(this.snapshot()));
+                this.assert(this.peek() === '}', "expected \"}\" at the end of dynamic expression");
+                this.p++; // skip "}"
+                // Return the dynamic expression directly as a FilteredValueToken
+                return new FilteredValueToken(dynamicExpression, [], this.input, begin, this.p, this.file);
+            }
             var initial = this.readExpression();
             this.assert(initial.valid(), "invalid value expression: ".concat(this.snapshot()));
             var filters = this.readFilters();
             return new FilteredValueToken(initial, filters, this.input, begin, this.p, this.file);
         };
+        /*
+        readFilteredValue (): FilteredValueToken {
+          const begin = this.p;
+      
+          const initial = this.readExpression();
+          this.assert(initial.valid(), `invalid value expression: ${this.snapshot()}`);
+          const filters = this.readFilters();
+          return new FilteredValueToken(initial, filters, this.input, begin, this.p, this.file);
+        }
+          */
         Tokenizer.prototype.readFilters = function () {
             var filters = [];
             while (true) {
