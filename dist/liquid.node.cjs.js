@@ -2093,34 +2093,12 @@ class Tokenizer {
     readValue() {
         this.skipBlank();
         const begin = this.p;
-        // Check for `${` and skip it if found
-        if (this.match('${')) {
-            this.p += 2; // Skip the `${`
-            const variableStart = this.p;
-            while (this.p < this.N && this.input[this.p] !== '}') {
-                this.p++;
-            }
-            const variableName = this.input.slice(variableStart, this.p).trim();
-            this.p++; // Skip the `}`
-            // You could return a LiteralToken or an IdentifierToken based on your needs
-            return new IdentifierToken(variableName, begin, this.p, this.file);
-        }
         const variable = this.readLiteral() || this.readQuoted() || this.readRange() || this.readNumber();
         const props = this.readProperties(!variable);
         if (!props.length)
             return variable;
         return new PropertyAccessToken(variable, props, this.input, begin, this.p);
     }
-    /*
-    readValue (): ValueToken | undefined {
-      this.skipBlank()
-      const begin = this.p
-      const variable = this.readLiteral() || this.readQuoted() || this.readRange() || this.readNumber()
-      const props = this.readProperties(!variable)
-      if (!props.length) return variable
-      return new PropertyAccessToken(variable, props, this.input, begin, this.p)
-    }
-      */
     readScopeValue() {
         this.skipBlank();
         const begin = this.p;
