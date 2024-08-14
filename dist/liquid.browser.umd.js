@@ -2565,6 +2565,18 @@
         Tokenizer.prototype.readValue = function () {
             this.skipBlank();
             var begin = this.p;
+            // Check for dynamic variable syntax ${...}
+            if (this.peek() === '$' && this.peek(1) === '{') {
+                this.p += 2; // skip "${"
+                var dynamicVariable = this.readExpression(); // Read the inner expression
+                this.assert(dynamicVariable.valid(), "invalid dynamic variable expression: ".concat(this.snapshot()));
+                this.assert(this.peek() === '}', "expected \"}\" at the end of dynamic variable expression");
+                this.p++; // skip "}"
+                // Create a PropertyAccessToken for the dynamic variable
+                var props_1 = this.readProperties(false);
+                //@ts-ignore
+                return new PropertyAccessToken(dynamicVariable, props_1, this.input, begin, this.p);
+            }
             var variable = this.readLiteral() || this.readQuoted() || this.readRange() || this.readNumber();
             var props = this.readProperties(!variable);
             if (!props.length)

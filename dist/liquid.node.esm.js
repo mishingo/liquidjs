@@ -2117,6 +2117,18 @@ class Tokenizer {
     readValue() {
         this.skipBlank();
         const begin = this.p;
+        // Check for dynamic variable syntax ${...}
+        if (this.peek() === '$' && this.peek(1) === '{') {
+            this.p += 2; // skip "${"
+            const dynamicVariable = this.readExpression(); // Read the inner expression
+            this.assert(dynamicVariable.valid(), `invalid dynamic variable expression: ${this.snapshot()}`);
+            this.assert(this.peek() === '}', `expected "}" at the end of dynamic variable expression`);
+            this.p++; // skip "}"
+            // Create a PropertyAccessToken for the dynamic variable
+            const props = this.readProperties(false);
+            //@ts-ignore
+            return new PropertyAccessToken(dynamicVariable, props, this.input, begin, this.p);
+        }
         const variable = this.readLiteral() || this.readQuoted() || this.readRange() || this.readNumber();
         const props = this.readProperties(!variable);
         if (!props.length)
