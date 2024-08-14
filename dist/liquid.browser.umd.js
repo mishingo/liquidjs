@@ -2434,13 +2434,7 @@
             if (this.readToDelimiter(outputDelimiterRight, true) === -1) {
                 throw this.error("output ".concat(this.snapshot(begin), " not closed"), begin);
             }
-            // Extract the token content and check for ${...} syntax
-            var content = input.slice(begin + 2, this.p - 2).trim(); // Strip the delimiters {{ and }}
-            if (content.startsWith('${') && content.endsWith('}')) {
-                content = content.slice(2, -1).trim(); // Strip the ${ and }
-            }
-            // Now pass the content (which may be modified) to the OutputToken constructor
-            return new OutputToken(content, begin, this.p, options, file);
+            return new OutputToken(input, begin, this.p, options, file);
         };
         Tokenizer.prototype.readEndrawOrRawContent = function (options) {
             var tagDelimiterLeft = options.tagDelimiterLeft, tagDelimiterRight = options.tagDelimiterRight;

@@ -215,25 +215,14 @@ export class Tokenizer {
   }
 
   readOutputToken (options: NormalizedFullOptions = defaultOptions): OutputToken {
-    const { file, input } = this;
-    const { outputDelimiterRight } = options;
-    const begin = this.p;
-  
+    const { file, input } = this
+    const { outputDelimiterRight } = options
+    const begin = this.p
     if (this.readToDelimiter(outputDelimiterRight, true) === -1) {
-      throw this.error(`output ${this.snapshot(begin)} not closed`, begin);
+      throw this.error(`output ${this.snapshot(begin)} not closed`, begin)
     }
-  
-    // Extract the token content and check for ${...} syntax
-    let content = input.slice(begin + 2, this.p - 2).trim(); // Strip the delimiters {{ and }}
-    
-    if (content.startsWith('${') && content.endsWith('}')) {
-      content = content.slice(2, -1).trim(); // Strip the ${ and }
-    }
-  
-    // Now pass the content (which may be modified) to the OutputToken constructor
-    return new OutputToken(content, begin, this.p, options, file);
+    return new OutputToken(input, begin, this.p, options, file)
   }
-  
 
   readEndrawOrRawContent (options: NormalizedFullOptions): HTMLToken | TagToken {
     const { tagDelimiterLeft, tagDelimiterRight } = options;
