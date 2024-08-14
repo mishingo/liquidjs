@@ -1862,6 +1862,28 @@ class Tokenizer {
     }
     readFilteredValue() {
         const begin = this.p;
+        // Check for the `${}` syntax braze
+        if (this.match('${')) {
+            this.p += 2; // Skip `${`
+            const variableStart = this.p;
+            while (this.p < this.N && this.input[this.p] !== '}') {
+                this.p++;
+            }
+            if (this.p >= this.N || this.input[this.p] !== '}') {
+                throw new Error('Unterminated `${}` expression.');
+            }
+            const variableName = this.input.slice(variableStart, this.p).trim();
+            this.p++; // Skip `}`
+            // Wrap the extracted variable as an expression
+            const initial = new Expression((function* () {
+                //@ts-ignore
+                yield new IdentifierToken(variableName, variableStart, this.p, this.file);
+            })());
+            // Ensure expression validity and process filters
+            this.assert(initial.valid(), `invalid value expression: ${this.snapshot()}`);
+            const filters = this.readFilters();
+            return new FilteredValueToken(initial, filters, this.input, begin, this.p, this.file);
+        }
         const initial = this.readExpression();
         this.assert(initial.valid(), `invalid value expression: ${this.snapshot()}`);
         const filters = this.readFilters();
