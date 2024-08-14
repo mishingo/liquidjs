@@ -55,11 +55,7 @@ export class Parser {
         return new TagClass(token, remainTokens, this.liquid, this)
       }
       if (isOutputToken(token)) {
-        const outputToken = token as OutputToken
-        // Update to handle dynamic properties
-        //@ts-ignore
-        outputToken.value = this.parseDynamicProperties(outputToken.value, this.liquid.context)
-        return new Output(outputToken, this.liquid)
+        return new Output(token as OutputToken, this.liquid)
       }
       return new HTML(token)
     } catch (e) {
@@ -67,18 +63,6 @@ export class Parser {
       throw new ParseError(e as Error, token)
     }
   }
-  
-  private parseDynamicProperties(value: string, context: any): string {
-    // Implement the logic to parse dynamic properties
-    // For example, replace ${variable} with the actual value
-    return value.replace(/\$\{([^}]+)\}/g, (match, variable) => {
-      // Logic to get the value of the variable
-      // This is just a placeholder, you need to implement the actual logic
-      const variableValue = context.get(variable.trim())
-      return variableValue !== undefined ? variableValue : match
-    })
-  }
-
   public parseStream (tokens: TopLevelToken[]) {
     return new ParseStream(tokens, (token, tokens) => this.parseToken(token, tokens))
   }

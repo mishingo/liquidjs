@@ -3287,11 +3287,7 @@
                     return new TagClass(token, remainTokens, this.liquid, this);
                 }
                 if (isOutputToken(token)) {
-                    var outputToken = token;
-                    // Update to handle dynamic properties
-                    //@ts-ignore
-                    outputToken.value = this.parseDynamicProperties(outputToken.value, this.liquid.context);
-                    return new Output(outputToken, this.liquid);
+                    return new Output(token, this.liquid);
                 }
                 return new HTML(token);
             }
@@ -3300,16 +3296,6 @@
                     throw e;
                 throw new ParseError(e, token);
             }
-        };
-        Parser.prototype.parseDynamicProperties = function (value, context) {
-            // Implement the logic to parse dynamic properties
-            // For example, replace ${variable} with the actual value
-            return value.replace(/\$\{([^}]+)\}/g, function (match, variable) {
-                // Logic to get the value of the variable
-                // This is just a placeholder, you need to implement the actual logic
-                var variableValue = context.get(variable.trim());
-                return variableValue !== undefined ? variableValue : match;
-            });
         };
         Parser.prototype.parseStream = function (tokens) {
             var _this = this;
