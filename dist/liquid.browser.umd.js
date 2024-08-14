@@ -2436,12 +2436,19 @@
             }
             // Extract the raw expression inside the delimiters
             var expressionContent = input.slice(begin + options.outputDelimiterLeft.length, this.p - outputDelimiterRight.length).trim();
+            // Check if the expressionContent is valid and not undefined
+            if (!expressionContent) {
+                throw this.error("Empty or invalid expression inside output token: ".concat(this.snapshot(begin)), begin);
+            }
             // Check if the expression is wrapped in ${...}
             if (expressionContent.startsWith('${') && expressionContent.endsWith('}')) {
                 // Strip ${ and }
                 expressionContent = expressionContent.slice(2, -1).trim();
             }
-            console.log(expressionContent);
+            // Check again if expressionContent is valid after trimming
+            if (!expressionContent) {
+                throw this.error("Empty or invalid expression after stripping: ".concat(this.snapshot(begin)), begin);
+            }
             // Return the OutputToken with the cleaned expression content
             return new OutputToken(expressionContent, begin, this.p, options, file);
         };
