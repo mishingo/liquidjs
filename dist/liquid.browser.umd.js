@@ -1574,7 +1574,7 @@
         return Expression;
     }());
     function evalToken(token, ctx, lenient) {
-        var str, dynamicVarRegex, result, path, resolvedValue;
+        var str, dynamicVarRegex, dynamicVariableMatch, result, fullMatch, varName, path, value, resolvedValue;
         if (lenient === void 0) { lenient = false; }
         return __generator(this, function (_a) {
             switch (_a.label) {
@@ -1594,22 +1594,27 @@
                 case 4:
                     str = token.getText();
                     dynamicVarRegex = /\$\{([^}]+)\}/g;
-                    result = str.replace(dynamicVarRegex, function (_, varName) {
-                        // Split the variable name by dot to form a path array
-                        var path = varName.trim().split('.');
-                        // Get the value of the variable from the context using getSync()
-                        var value = ctx.getSync(path);
-                        return value !== undefined ? String(value) : '';
-                    });
-                    // If result is still a variable reference, resolve it using getSync()
-                    if (result) {
-                        path = result.trim().split('.');
-                        resolvedValue = ctx.getSync(path);
-                        if (resolvedValue !== undefined) {
-                            result = String(resolvedValue);
+                    dynamicVariableMatch = dynamicVarRegex.exec(str);
+                    if (dynamicVariableMatch) {
+                        result = str;
+                        // Process each dynamic variable found
+                        while (dynamicVariableMatch) {
+                            fullMatch = dynamicVariableMatch[0];
+                            varName = dynamicVariableMatch[1].trim();
+                            path = varName.split('.');
+                            value = ctx.getSync(path);
+                            resolvedValue = value !== undefined ? String(value) : '';
+                            // Replace the dynamic variable in the original string
+                            result = result.replace(fullMatch, resolvedValue);
+                            // Move to the next match
+                            dynamicVariableMatch = dynamicVarRegex.exec(result);
                         }
+                        return [2 /*return*/, result];
                     }
-                    return [2 /*return*/, result];
+                    return [4 /*yield*/, ctx.getSync(str.trim().split('.'))];
+                case 5: 
+                // If no dynamic variable syntax is found, fall back to default evaluation
+                return [2 /*return*/, _a.sent()];
             }
         });
     }

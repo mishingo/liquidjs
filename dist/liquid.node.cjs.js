@@ -1253,22 +1253,28 @@ function* evalToken(token, ctx, lenient = false) {
     // Convert token to string and check for dynamic variable syntax ${variableName}
     const str = token.getText();
     const dynamicVarRegex = /\$\{([^}]+)\}/g;
-    let result = str.replace(dynamicVarRegex, (_, varName) => {
-        // Split the variable name by dot to form a path array
-        const path = varName.trim().split('.');
-        // Get the value of the variable from the context using getSync()
-        const value = ctx.getSync(path);
-        return value !== undefined ? String(value) : '';
-    });
-    // If result is still a variable reference, resolve it using getSync()
-    if (result) {
-        const path = result.trim().split('.');
-        const resolvedValue = ctx.getSync(path);
-        if (resolvedValue !== undefined) {
-            result = String(resolvedValue);
+    // Check if the expression contains dynamic variable syntax
+    let dynamicVariableMatch = dynamicVarRegex.exec(str);
+    if (dynamicVariableMatch) {
+        let result = str;
+        // Process each dynamic variable found
+        while (dynamicVariableMatch) {
+            const fullMatch = dynamicVariableMatch[0]; // e.g., ${email_address}
+            const varName = dynamicVariableMatch[1].trim(); // e.g., email_address
+            // Split the variable name by dot to form a path array
+            const path = varName.split('.');
+            // Get the value of the variable from the context using getSync()
+            const value = ctx.getSync(path);
+            const resolvedValue = value !== undefined ? String(value) : '';
+            // Replace the dynamic variable in the original string
+            result = result.replace(fullMatch, resolvedValue);
+            // Move to the next match
+            dynamicVariableMatch = dynamicVarRegex.exec(result);
         }
+        return result;
     }
-    return result;
+    // If no dynamic variable syntax is found, fall back to default evaluation
+    return yield ctx.getSync(str.trim().split('.'));
 }
 function* evalPropertyAccessToken(token, ctx, lenient) {
     const props = [];
