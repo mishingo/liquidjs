@@ -1987,11 +1987,33 @@ class Tokenizer {
         const { file, input } = this;
         const { outputDelimiterRight } = options;
         const begin = this.p;
+        if (this.match('${')) {
+            this.p += 2; // Skip the `${`
+            const variableStart = this.p;
+            while (this.p < this.N && this.input[this.p] !== '}') {
+                this.p++;
+            }
+            const variable = this.input.slice(variableStart, this.p);
+            this.p++; // Skip the `}`
+            const content = `{{ ${variable.trim()} }}`; // Formulate as a standard Liquid variable
+            return new OutputToken(content, begin, this.p, options, file);
+        }
         if (this.readToDelimiter(outputDelimiterRight, true) === -1) {
             throw this.error(`output ${this.snapshot(begin)} not closed`, begin);
         }
         return new OutputToken(input, begin, this.p, options, file);
     }
+    /*
+    readOutputToken (options: NormalizedFullOptions = defaultOptions): OutputToken {
+      const { file, input } = this
+      const { outputDelimiterRight } = options
+      const begin = this.p
+      if (this.readToDelimiter(outputDelimiterRight, true) === -1) {
+        throw this.error(`output ${this.snapshot(begin)} not closed`, begin)
+      }
+      return new OutputToken(input, begin, this.p, options, file)
+    }
+      */
     readEndrawOrRawContent(options) {
         const { tagDelimiterLeft, tagDelimiterRight } = options;
         const begin = this.p;

@@ -2431,11 +2431,33 @@
             var _a = this, file = _a.file, input = _a.input;
             var outputDelimiterRight = options.outputDelimiterRight;
             var begin = this.p;
+            if (this.match('${')) {
+                this.p += 2; // Skip the `${`
+                var variableStart = this.p;
+                while (this.p < this.N && this.input[this.p] !== '}') {
+                    this.p++;
+                }
+                var variable = this.input.slice(variableStart, this.p);
+                this.p++; // Skip the `}`
+                var content = "{{ ".concat(variable.trim(), " }}"); // Formulate as a standard Liquid variable
+                return new OutputToken(content, begin, this.p, options, file);
+            }
             if (this.readToDelimiter(outputDelimiterRight, true) === -1) {
                 throw this.error("output ".concat(this.snapshot(begin), " not closed"), begin);
             }
             return new OutputToken(input, begin, this.p, options, file);
         };
+        /*
+        readOutputToken (options: NormalizedFullOptions = defaultOptions): OutputToken {
+          const { file, input } = this
+          const { outputDelimiterRight } = options
+          const begin = this.p
+          if (this.readToDelimiter(outputDelimiterRight, true) === -1) {
+            throw this.error(`output ${this.snapshot(begin)} not closed`, begin)
+          }
+          return new OutputToken(input, begin, this.p, options, file)
+        }
+          */
         Tokenizer.prototype.readEndrawOrRawContent = function (options) {
             var tagDelimiterLeft = options.tagDelimiterLeft, tagDelimiterRight = options.tagDelimiterRight;
             var begin = this.p;
