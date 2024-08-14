@@ -1581,12 +1581,11 @@
                 case 0:
                     if (!token)
                         return [2 /*return*/];
-                    if (!('content' in token)) return [3 /*break*/, 3];
+                    if (!('content' in token && typeof token.content === 'string')) return [3 /*break*/, 3];
                     if (!(token.content.startsWith('${') && token.content.endsWith('}'))) return [3 /*break*/, 2];
                     variableName = token.content.slice(2, -1).trim();
                     return [4 /*yield*/, ctx._get(variableName.split('.'))];
-                case 1: // Extract the variable name inside ${}
-                return [2 /*return*/, _a.sent()];
+                case 1: return [2 /*return*/, _a.sent()];
                 case 2: return [2 /*return*/, token.content];
                 case 3:
                     if ('content' in token)
@@ -2246,11 +2245,11 @@
             return new Expression(this.readExpressionTokens());
         };
         Tokenizer.prototype.readExpressionTokens = function () {
-            var operator, operand;
+            var operator, begin, variableName, operand;
             return __generator(this, function (_a) {
                 switch (_a.label) {
                     case 0:
-                        if (!(this.p < this.N)) return [3 /*break*/, 5];
+                        if (!(this.p < this.N)) return [3 /*break*/, 7];
                         operator = this.readOperator();
                         if (!operator) return [3 /*break*/, 2];
                         return [4 /*yield*/, operator];
@@ -2258,14 +2257,29 @@
                         _a.sent();
                         return [3 /*break*/, 0];
                     case 2:
-                        operand = this.readValue();
-                        if (!operand) return [3 /*break*/, 4];
-                        return [4 /*yield*/, operand];
+                        if (!(this.peek() === '$' && this.peek(1) === '{')) return [3 /*break*/, 4];
+                        this.p += 2; // Move past '${'
+                        begin = this.p;
+                        // Read until the closing '}'
+                        while (this.p < this.N && this.peek() !== '}') {
+                            this.p++;
+                        }
+                        if (!(this.peek() === '}')) return [3 /*break*/, 4];
+                        variableName = this.input.slice(begin, this.p).trim();
+                        this.p++; // Move past '}'
+                        return [4 /*yield*/, new IdentifierToken(variableName, begin, this.p, this.file)];
                     case 3:
                         _a.sent();
                         return [3 /*break*/, 0];
-                    case 4: return [2 /*return*/];
-                    case 5: return [2 /*return*/];
+                    case 4:
+                        operand = this.readValue();
+                        if (!operand) return [3 /*break*/, 6];
+                        return [4 /*yield*/, operand];
+                    case 5:
+                        _a.sent();
+                        return [3 /*break*/, 0];
+                    case 6: return [2 /*return*/];
+                    case 7: return [2 /*return*/];
                 }
             });
         };

@@ -36,15 +36,13 @@ export class Expression {
 
 export function * evalToken (token: Token | undefined, ctx: Context, lenient = false): IterableIterator<unknown> {
   if (!token) return
-  if ('content' in token) {
-    // Check if the token content starts with '${' and ends with '}'
-    //@ts-ignore
+  // Handle `${...}` syntax
+  if ('content' in token && typeof token.content === 'string') {
     if (token.content.startsWith('${') && token.content.endsWith('}')) {
-      //@ts-ignore
-      const variableName = token.content.slice(2, -1).trim(); // Extract the variable name inside ${}
-      return yield ctx._get(variableName.split('.'));
+      const variableName = token.content.slice(2, -1).trim()
+      return yield ctx._get(variableName.split('.'))
     }
-    return token.content;
+    return token.content
   }
   if ('content' in token) return token.content
   if (isPropertyAccessToken(token)) return yield evalPropertyAccessToken(token, ctx, lenient)

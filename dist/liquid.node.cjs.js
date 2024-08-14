@@ -1241,12 +1241,10 @@ class Expression {
 function* evalToken(token, ctx, lenient = false) {
     if (!token)
         return;
-    if ('content' in token) {
-        // Check if the token content starts with '${' and ends with '}'
-        //@ts-ignore
+    // Handle `${...}` syntax
+    if ('content' in token && typeof token.content === 'string') {
         if (token.content.startsWith('${') && token.content.endsWith('}')) {
-            //@ts-ignore
-            const variableName = token.content.slice(2, -1).trim(); // Extract the variable name inside ${}
+            const variableName = token.content.slice(2, -1).trim();
             return yield ctx._get(variableName.split('.'));
         }
         return token.content;
@@ -1777,6 +1775,21 @@ class Tokenizer {
             if (operator) {
                 yield operator;
                 continue;
+            }
+            // Check for ${...} syntax
+            if (this.peek() === '$' && this.peek(1) === '{') {
+                this.p += 2; // Move past '${'
+                const begin = this.p;
+                // Read until the closing '}'
+                while (this.p < this.N && this.peek() !== '}') {
+                    this.p++;
+                }
+                if (this.peek() === '}') {
+                    const variableName = this.input.slice(begin, this.p).trim();
+                    this.p++; // Move past '}'
+                    yield new IdentifierToken(variableName, begin, this.p, this.file);
+                    continue;
+                }
             }
             const operand = this.readValue();
             if (operand) {

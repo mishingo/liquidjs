@@ -40,6 +40,23 @@ export class Tokenizer {
         yield operator;
         continue;
       }
+       // Check for ${...} syntax
+       if (this.peek() === '$' && this.peek(1) === '{') {
+        this.p += 2; // Move past '${'
+        const begin = this.p;
+
+        // Read until the closing '}'
+        while (this.p < this.N && this.peek() !== '}') {
+          this.p++;
+        }
+        if (this.peek() === '}') {
+          const variableName = this.input.slice(begin, this.p).trim();
+          this.p++; // Move past '}'
+          yield new IdentifierToken(variableName, begin, this.p, this.file);
+          continue;
+        }
+      }
+      
       const operand = this.readValue();
       if (operand) {
         yield operand;
