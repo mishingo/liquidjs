@@ -1990,35 +1990,8 @@ class Tokenizer {
         if (this.readToDelimiter(outputDelimiterRight, true) === -1) {
             throw this.error(`output ${this.snapshot(begin)} not closed`, begin);
         }
-        // Extract the raw expression inside the delimiters
-        let expressionContent = input.slice(begin + options.outputDelimiterLeft.length, this.p - outputDelimiterRight.length).trim();
-        // Check if the expressionContent is valid and not undefined
-        if (!expressionContent) {
-            throw this.error(`Empty or invalid expression inside output token: ${this.snapshot(begin)}`, begin);
-        }
-        // Check if the expression is wrapped in ${...}
-        if (expressionContent.startsWith('${') && expressionContent.endsWith('}')) {
-            // Strip ${ and }
-            expressionContent = expressionContent.slice(2, -1).trim();
-        }
-        // Check again if expressionContent is valid after trimming
-        if (!expressionContent) {
-            throw this.error(`Empty or invalid expression after stripping: ${this.snapshot(begin)}`, begin);
-        }
-        // Return the OutputToken with the cleaned expression content
-        return new OutputToken(expressionContent, begin, this.p, options, file);
+        return new OutputToken(input, begin, this.p, options, file);
     }
-    /*
-    readOutputToken (options: NormalizedFullOptions = defaultOptions): OutputToken {
-      const { file, input } = this
-      const { outputDelimiterRight } = options
-      const begin = this.p
-      if (this.readToDelimiter(outputDelimiterRight, true) === -1) {
-        throw this.error(`output ${this.snapshot(begin)} not closed`, begin)
-      }
-      return new OutputToken(input, begin, this.p, options, file)
-    }
-      */
     readEndrawOrRawContent(options) {
         const { tagDelimiterLeft, tagDelimiterRight } = options;
         const begin = this.p;
@@ -2141,40 +2114,35 @@ class Tokenizer {
         }
         return -1;
     }
-    /*
-      readValue (): ValueToken | undefined {
-        this.skipBlank();
-        const begin = this.p;
-        // Check for dynamic variable syntax ${...}
-        if (this.peek() === '$' && this.peek(1) === '{') {
-          this.p += 2; // skip "${"
-          console.log('Found dynamic variable syntax'); // Debug log
-          const dynamicVariable = this.readExpression(); // Read the inner expression
-          this.assert(dynamicVariable.valid(), `invalid dynamic variable expression: ${this.snapshot()}`);
-          this.assert(this.peek() === '}', `expected "}" at the end of dynamic variable expression`);
-          this.p++; // skip "}"
-          console.log('Parsed dynamic variable:', dynamicVariable); // Debug log
-      
-          // Create a PropertyAccessToken for the dynamic variable
-          const props = this.readProperties(false);
-          //@ts-ignore
-          return new PropertyAccessToken(dynamicVariable, props, this.input, begin, this.p);
-        }
-        const variable = this.readLiteral() || this.readQuoted() || this.readRange() || this.readNumber();
-        const props = this.readProperties(!variable);
-        if (!props.length) return variable;
-        return new PropertyAccessToken(variable, props, this.input, begin, this.p);
-      }
-        */
     readValue() {
         this.skipBlank();
         const begin = this.p;
+        console.log(this.p);
+        // Check for `${` and skip it if found
+        if (this.match('${')) {
+            this.p += 2; // Skip the `${`
+            while (this.p < this.N && this.input[this.p] !== '}') {
+                this.p++;
+            }
+            this.p++; // Skip the `}`
+            return new LiteralToken(this.input, begin, this.p, this.file);
+        }
         const variable = this.readLiteral() || this.readQuoted() || this.readRange() || this.readNumber();
         const props = this.readProperties(!variable);
         if (!props.length)
             return variable;
         return new PropertyAccessToken(variable, props, this.input, begin, this.p);
     }
+    /*
+    readValue (): ValueToken | undefined {
+      this.skipBlank()
+      const begin = this.p
+      const variable = this.readLiteral() || this.readQuoted() || this.readRange() || this.readNumber()
+      const props = this.readProperties(!variable)
+      if (!props.length) return variable
+      return new PropertyAccessToken(variable, props, this.input, begin, this.p)
+    }
+      */
     readScopeValue() {
         this.skipBlank();
         const begin = this.p;
