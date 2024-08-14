@@ -14,6 +14,7 @@ export declare class Parser {
     parse(html: string, filepath?: string): Template[];
     parseTokens(tokens: TopLevelToken[]): Template[];
     parseToken(token: TopLevelToken, remainTokens: TopLevelToken[]): import("../template").Tag | Output | HTML;
+    private parseDynamicProperties;
     parseStream(tokens: TopLevelToken[]): ParseStream<TopLevelToken>;
     private _parseFileCached;
     private _parseFile;

@@ -366,7 +366,7 @@ export class Tokenizer {
       this.assert(this.peek() === '}', `expected "}" at the end of dynamic variable expression`);
       this.p++; // skip "}"
       console.log('Parsed dynamic variable:', dynamicVariable); // Debug log
-
+  
       // Create a PropertyAccessToken for the dynamic variable
       const props = this.readProperties(false);
       //@ts-ignore
@@ -405,8 +405,18 @@ export class Tokenizer {
       }
       if (this.peek() === '.' && this.peek(1) !== '..') { // skip range syntax
         this.p++;
-        const prop = this.readNonEmptyIdentifier();
+        let prop;
+        if (this.peek() === '$' && this.peek(1) === '{') {
+          this.p += 2; // skip "${"
+          prop = this.readExpression(); // Read the inner expression
+          this.assert(prop.valid(), `invalid dynamic property expression: ${this.snapshot()}`);
+          this.assert(this.peek() === '}', `expected "}" at the end of dynamic property expression`);
+          this.p++; // skip "}"
+        } else {
+          prop = this.readNonEmptyIdentifier();
+        }
         if (!prop) break;
+        //@ts-ignore
         props.push(prop);
         continue;
       }
