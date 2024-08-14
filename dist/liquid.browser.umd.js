@@ -1574,47 +1574,31 @@
         return Expression;
     }());
     function evalToken(token, ctx, lenient) {
-        var str, dynamicVarRegex, dynamicVariableMatch, result, fullMatch, varName, path, value, resolvedValue;
+        var variableName;
         if (lenient === void 0) { lenient = false; }
         return __generator(this, function (_a) {
             switch (_a.label) {
                 case 0:
                     if (!token)
                         return [2 /*return*/];
-                    // Handle plain text tokens
+                    if (!('content' in token)) return [3 /*break*/, 3];
+                    if (!(token.content.startsWith('${') && token.content.endsWith('}'))) return [3 /*break*/, 2];
+                    variableName = token.content.slice(2, -1).trim();
+                    return [4 /*yield*/, ctx._get(variableName.split('.'))];
+                case 1: // Extract the variable name inside ${}
+                return [2 /*return*/, _a.sent()];
+                case 2: return [2 /*return*/, token.content];
+                case 3:
                     if ('content' in token)
                         return [2 /*return*/, token.content];
-                    if (!isPropertyAccessToken(token)) return [3 /*break*/, 2];
+                    if (!isPropertyAccessToken(token)) return [3 /*break*/, 5];
                     return [4 /*yield*/, evalPropertyAccessToken(token, ctx, lenient)];
-                case 1: return [2 /*return*/, _a.sent()];
-                case 2:
-                    if (!isRangeToken(token)) return [3 /*break*/, 4];
+                case 4: return [2 /*return*/, _a.sent()];
+                case 5:
+                    if (!isRangeToken(token)) return [3 /*break*/, 7];
                     return [4 /*yield*/, evalRangeToken(token, ctx)];
-                case 3: return [2 /*return*/, _a.sent()];
-                case 4:
-                    str = token.getText();
-                    dynamicVarRegex = /\$\{([^}]+)\}/g;
-                    dynamicVariableMatch = dynamicVarRegex.exec(str);
-                    if (dynamicVariableMatch) {
-                        result = str;
-                        // Process each dynamic variable found
-                        while (dynamicVariableMatch) {
-                            fullMatch = dynamicVariableMatch[0];
-                            varName = dynamicVariableMatch[1].trim();
-                            path = varName.split('.');
-                            value = ctx.getSync(path);
-                            resolvedValue = value !== undefined ? String(value) : '';
-                            // Replace the dynamic variable in the original string
-                            result = result.replace(fullMatch, resolvedValue);
-                            // Move to the next match
-                            dynamicVariableMatch = dynamicVarRegex.exec(result);
-                        }
-                        return [2 /*return*/, result];
-                    }
-                    return [4 /*yield*/, ctx.getSync(str.trim().split('.'))];
-                case 5: 
-                // If no dynamic variable syntax is found, fall back to default evaluation
-                return [2 /*return*/, _a.sent()];
+                case 6: return [2 /*return*/, _a.sent()];
+                case 7: return [2 /*return*/];
             }
         });
     }
@@ -3491,6 +3475,9 @@
             return __generator(this, function (_a) {
                 switch (_a.label) {
                     case 0:
+                        if (typeof paths === 'string') {
+                            paths = paths.split('.');
+                        }
                         scope = this.findScope(paths[0]);
                         return [4 /*yield*/, this._getFromScope(scope, paths)];
                     case 1: return [2 /*return*/, _a.sent()];

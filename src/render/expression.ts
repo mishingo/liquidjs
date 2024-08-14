@@ -34,51 +34,21 @@ export class Expression {
   }
 }
 
-export function * evalToken(token: Token | undefined, ctx: Context, lenient = false): IterableIterator<unknown> {
-  if (!token) return;
-
-  // Handle plain text tokens
-  if ('content' in token) return token.content;
-
-  // Handle property access tokens
-  if (isPropertyAccessToken(token)) return yield evalPropertyAccessToken(token, ctx, lenient);
-
-  // Handle range tokens
-  if (isRangeToken(token)) return yield evalRangeToken(token, ctx);
-
-  // Convert token to string and check for dynamic variable syntax ${variableName}
-  const str = token.getText();
-  const dynamicVarRegex = /\$\{([^}]+)\}/g;
-
-  // Check if the expression contains dynamic variable syntax
-  let dynamicVariableMatch = dynamicVarRegex.exec(str);
-  if (dynamicVariableMatch) {
-    let result = str;
-
-    // Process each dynamic variable found
-    while (dynamicVariableMatch) {
-      const fullMatch = dynamicVariableMatch[0];  // e.g., ${email_address}
-      const varName = dynamicVariableMatch[1].trim();  // e.g., email_address
-
-      // Split the variable name by dot to form a path array
-      const path = varName.split('.');
-
-      // Get the value of the variable from the context using getSync()
-      const value = ctx.getSync(path);
-      const resolvedValue = value !== undefined ? String(value) : '';
-
-      // Replace the dynamic variable in the original string
-      result = result.replace(fullMatch, resolvedValue);
-
-      // Move to the next match
-      dynamicVariableMatch = dynamicVarRegex.exec(result);
+export function * evalToken (token: Token | undefined, ctx: Context, lenient = false): IterableIterator<unknown> {
+  if (!token) return
+  if ('content' in token) {
+    // Check if the token content starts with '${' and ends with '}'
+    //@ts-ignore
+    if (token.content.startsWith('${') && token.content.endsWith('}')) {
+      //@ts-ignore
+      const variableName = token.content.slice(2, -1).trim(); // Extract the variable name inside ${}
+      return yield ctx._get(variableName.split('.'));
     }
-
-    return result;
+    return token.content;
   }
-
-  // If no dynamic variable syntax is found, fall back to default evaluation
-  return yield ctx.getSync(str.trim().split('.'));
+  if ('content' in token) return token.content
+  if (isPropertyAccessToken(token)) return yield evalPropertyAccessToken(token, ctx, lenient)
+  if (isRangeToken(token)) return yield evalRangeToken(token, ctx)
 }
 
 function * evalPropertyAccessToken (token: PropertyAccessToken, ctx: Context, lenient: boolean): IterableIterator<unknown> {

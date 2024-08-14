@@ -70,9 +70,13 @@ export class Context {
   public getSync (paths: PropertyKey[]): unknown {
     return toValueSync(this._get(paths))
   }
-  public * _get (paths: PropertyKey[]): IterableIterator<unknown> {
-    const scope = this.findScope(paths[0])
-    return yield this._getFromScope(scope, paths)
+
+  public * _get (paths: PropertyKey[] | string): IterableIterator<unknown> {
+    if (typeof paths === 'string') {
+      paths = paths.split('.');
+    }
+    const scope = this.findScope(paths[0]);
+    return yield this._getFromScope(scope, paths);
   }
   /**
    * @deprecated use `_get()` instead

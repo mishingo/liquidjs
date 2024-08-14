@@ -44,7 +44,7 @@ export declare class Context {
      */
     get(paths: PropertyKey[]): unknown;
     getSync(paths: PropertyKey[]): unknown;
-    _get(paths: PropertyKey[]): IterableIterator<unknown>;
+    _get(paths: PropertyKey[] | string): IterableIterator<unknown>;
     /**
      * @deprecated use `_get()` instead
      */
