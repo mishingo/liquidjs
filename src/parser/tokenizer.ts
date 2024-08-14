@@ -413,7 +413,36 @@ export class Tokenizer {
     if (!props.length) return undefined;
     return new PropertyAccessToken(undefined, props, this.input, begin, this.p);
   }
+  private readProperties (isBegin = true): (ValueToken | IdentifierToken)[] {
+    const props: (ValueToken | IdentifierToken)[] = []
+    while (true) {
+      if (this.peek() === '[') {
+        this.p++
+        const prop = this.readValue() || new IdentifierToken(this.input, this.p, this.p, this.file)
+        this.assert(this.readTo(']') !== -1, '[ not closed')
+        props.push(prop)
+        continue
+      }
+      if (isBegin && !props.length) {
+        const prop = this.readNonEmptyIdentifier()
+        if (prop) {
+          props.push(prop)
+          continue
+        }
+      }
+      if (this.peek() === '.' && this.peek(1) !== '.') { // skip range syntax
+        this.p++
+        const prop = this.readNonEmptyIdentifier()
+        if (!prop) break
+        props.push(prop)
+        continue
+      }
+      break
+    }
+    return props
+  }
 
+  /*
   private readProperties(isBegin = true): (ValueToken | IdentifierToken)[] {
     const props: (ValueToken | IdentifierToken)[] = [];
     while (true) {
@@ -454,7 +483,7 @@ export class Tokenizer {
     }
     return props;
   }
-  
+  */
 
   readNumber (): NumberToken | undefined {
     this.skipBlank();

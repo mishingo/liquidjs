@@ -2691,22 +2691,9 @@
                         continue;
                     }
                 }
-                if (this.peek() === '.' && this.peek(1) !== '..') { // skip range syntax
+                if (this.peek() === '.' && this.peek(1) !== '.') { // skip range syntax
                     this.p++;
-                    var prop = void 0;
-                    if (this.peek() === '$' && this.peek(1) === '{') {
-                        this.p += 2; // skip "${"
-                        var start = this.p;
-                        while (this.p < this.N && this.input[this.p] !== '}') {
-                            this.p++;
-                        }
-                        prop = new IdentifierToken(this.input, start, this.p, this.file);
-                        this.assert(this.input[this.p] === '}', "expected \"}\" at the end of dynamic property expression");
-                        this.p++; // skip "}"
-                    }
-                    else {
-                        prop = this.readNonEmptyIdentifier();
-                    }
+                    var prop = this.readNonEmptyIdentifier();
                     if (!prop)
                         break;
                     props.push(prop);
@@ -2716,6 +2703,48 @@
             }
             return props;
         };
+        /*
+        private readProperties(isBegin = true): (ValueToken | IdentifierToken)[] {
+          const props: (ValueToken | IdentifierToken)[] = [];
+          while (true) {
+            if (this.peek() === '[') {
+              this.p++;
+              const prop = this.readValue() || new IdentifierToken(this.input, this.p, this.p, this.file);
+              this.assert(this.readTo(']') !== -1, '[ not closed');
+              props.push(prop);
+              continue;
+            }
+            if (isBegin && !props.length) {
+              const prop = this.readNonEmptyIdentifier();
+              if (prop) {
+                props.push(prop);
+                continue;
+              }
+            }
+            if (this.peek() === '.' && this.peek(1) !== '..') { // skip range syntax
+              this.p++;
+              let prop;
+              if (this.peek() === '$' && this.peek(1) === '{') {
+                this.p += 2; // skip "${"
+                const start = this.p;
+                while (this.p < this.N && this.input[this.p] !== '}') {
+                  this.p++;
+                }
+                prop = new IdentifierToken(this.input, start, this.p, this.file);
+                this.assert(this.input[this.p] === '}', `expected "}" at the end of dynamic property expression`);
+                this.p++; // skip "}"
+              } else {
+                prop = this.readNonEmptyIdentifier();
+              }
+              if (!prop) break;
+              props.push(prop);
+              continue;
+            }
+            break;
+          }
+          return props;
+        }
+        */
         Tokenizer.prototype.readNumber = function () {
             this.skipBlank();
             var decimalFound = false;
