@@ -2,7 +2,7 @@ import { DelimitedToken } from './delimited-token'
 import { NormalizedFullOptions } from '../liquid-options'
 import { TokenKind } from '../parser'
 
-/*
+
 export class OutputToken extends DelimitedToken {
   public constructor (
     input: string,
@@ -16,8 +16,8 @@ export class OutputToken extends DelimitedToken {
     super(TokenKind.Output, valueRange, input, begin, end, trimOutputLeft, trimOutputRight, file)
   }
 }
-*/
 
+/*
 export class OutputToken extends DelimitedToken {
   public constructor (
     input: string,
@@ -40,3 +40,4 @@ export class OutputToken extends DelimitedToken {
     super(TokenKind.Output, [begin + outputDelimiterLeft.length, begin + outputDelimiterLeft.length + content.length], content, begin, end, trimOutputLeft, trimOutputRight, file)
   }
 }
+*/

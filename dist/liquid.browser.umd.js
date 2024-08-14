@@ -1124,6 +1124,15 @@
         return TagToken;
     }(DelimitedToken));
 
+    var OutputToken = /** @class */ (function (_super) {
+        __extends(OutputToken, _super);
+        function OutputToken(input, begin, end, options, file) {
+            var trimOutputLeft = options.trimOutputLeft, trimOutputRight = options.trimOutputRight, outputDelimiterLeft = options.outputDelimiterLeft, outputDelimiterRight = options.outputDelimiterRight;
+            var valueRange = [begin + outputDelimiterLeft.length, end - outputDelimiterRight.length];
+            return _super.call(this, exports.TokenKind.Output, valueRange, input, begin, end, trimOutputLeft, trimOutputRight, file) || this;
+        }
+        return OutputToken;
+    }(DelimitedToken));
     /*
     export class OutputToken extends DelimitedToken {
       public constructor (
@@ -1135,25 +1144,19 @@
       ) {
         const { trimOutputLeft, trimOutputRight, outputDelimiterLeft, outputDelimiterRight } = options
         const valueRange: [number, number] = [begin + outputDelimiterLeft.length, end - outputDelimiterRight.length]
-        super(TokenKind.Output, valueRange, input, begin, end, trimOutputLeft, trimOutputRight, file)
+
+        // Extract the content within the delimiters
+        let content = input.slice(valueRange[0], valueRange[1]).trim();
+
+        // Check for and handle `${}` syntax
+        const regex = /\$\{([^}]+)\}/g;
+        content = content.replace(regex, (match, p1) => p1.trim());
+
+        // Use the modified content in the parent constructor
+        super(TokenKind.Output, [begin + outputDelimiterLeft.length, begin + outputDelimiterLeft.length + content.length], content, begin, end, trimOutputLeft, trimOutputRight, file)
       }
     }
     */
-    var OutputToken = /** @class */ (function (_super) {
-        __extends(OutputToken, _super);
-        function OutputToken(input, begin, end, options, file) {
-            var trimOutputLeft = options.trimOutputLeft, trimOutputRight = options.trimOutputRight, outputDelimiterLeft = options.outputDelimiterLeft, outputDelimiterRight = options.outputDelimiterRight;
-            var valueRange = [begin + outputDelimiterLeft.length, end - outputDelimiterRight.length];
-            // Extract the content within the delimiters
-            var content = input.slice(valueRange[0], valueRange[1]).trim();
-            // Check for and handle `${}` syntax
-            var regex = /\$\{([^}]+)\}/g;
-            content = content.replace(regex, function (match, p1) { return p1.trim(); });
-            // Use the modified content in the parent constructor
-            return _super.call(this, exports.TokenKind.Output, [begin + outputDelimiterLeft.length, begin + outputDelimiterLeft.length + content.length], content, begin, end, trimOutputLeft, trimOutputRight, file) || this;
-        }
-        return OutputToken;
-    }(DelimitedToken));
 
     var HTMLToken = /** @class */ (function (_super) {
         __extends(HTMLToken, _super);
