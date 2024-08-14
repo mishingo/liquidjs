@@ -1241,12 +1241,34 @@ class Expression {
 function* evalToken(token, ctx, lenient = false) {
     if (!token)
         return;
+    // Handle plain text tokens
     if ('content' in token)
         return token.content;
+    // Handle property access tokens
     if (isPropertyAccessToken(token))
         return yield evalPropertyAccessToken(token, ctx, lenient);
+    // Handle range tokens
     if (isRangeToken(token))
         return yield evalRangeToken(token, ctx);
+    // Convert token to string and check for dynamic variable syntax ${variableName}
+    const str = token.getText();
+    const dynamicVarRegex = /\$\{([^}]+)\}/g;
+    let result = str.replace(dynamicVarRegex, (_, varName) => {
+        // Split the variable name by dot to form a path array
+        const path = varName.trim().split('.');
+        // Get the value of the variable from the context using getSync()
+        const value = ctx.getSync(path);
+        return value !== undefined ? String(value) : '';
+    });
+    // If result is still a variable reference, resolve it using getSync()
+    if (result) {
+        const path = result.trim().split('.');
+        const resolvedValue = ctx.getSync(path);
+        if (resolvedValue !== undefined) {
+            result = String(resolvedValue);
+        }
+    }
+    return result;
 }
 function* evalPropertyAccessToken(token, ctx, lenient) {
     const props = [];

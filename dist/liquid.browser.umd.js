@@ -1574,12 +1574,14 @@
         return Expression;
     }());
     function evalToken(token, ctx, lenient) {
+        var str, dynamicVarRegex, result, path, resolvedValue;
         if (lenient === void 0) { lenient = false; }
         return __generator(this, function (_a) {
             switch (_a.label) {
                 case 0:
                     if (!token)
                         return [2 /*return*/];
+                    // Handle plain text tokens
                     if ('content' in token)
                         return [2 /*return*/, token.content];
                     if (!isPropertyAccessToken(token)) return [3 /*break*/, 2];
@@ -1589,7 +1591,25 @@
                     if (!isRangeToken(token)) return [3 /*break*/, 4];
                     return [4 /*yield*/, evalRangeToken(token, ctx)];
                 case 3: return [2 /*return*/, _a.sent()];
-                case 4: return [2 /*return*/];
+                case 4:
+                    str = token.getText();
+                    dynamicVarRegex = /\$\{([^}]+)\}/g;
+                    result = str.replace(dynamicVarRegex, function (_, varName) {
+                        // Split the variable name by dot to form a path array
+                        var path = varName.trim().split('.');
+                        // Get the value of the variable from the context using getSync()
+                        var value = ctx.getSync(path);
+                        return value !== undefined ? String(value) : '';
+                    });
+                    // If result is still a variable reference, resolve it using getSync()
+                    if (result) {
+                        path = result.trim().split('.');
+                        resolvedValue = ctx.getSync(path);
+                        if (resolvedValue !== undefined) {
+                            result = String(resolvedValue);
+                        }
+                    }
+                    return [2 /*return*/, result];
             }
         });
     }
