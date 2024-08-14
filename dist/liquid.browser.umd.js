@@ -2568,10 +2568,12 @@
             // Check for dynamic variable syntax ${...}
             if (this.peek() === '$' && this.peek(1) === '{') {
                 this.p += 2; // skip "${"
+                console.log('Found dynamic variable syntax'); // Debug log
                 var dynamicVariable = this.readExpression(); // Read the inner expression
                 this.assert(dynamicVariable.valid(), "invalid dynamic variable expression: ".concat(this.snapshot()));
                 this.assert(this.peek() === '}', "expected \"}\" at the end of dynamic variable expression");
                 this.p++; // skip "}"
+                console.log('Parsed dynamic variable:', dynamicVariable); // Debug log
                 // Create a PropertyAccessToken for the dynamic variable
                 var props_1 = this.readProperties(false);
                 //@ts-ignore

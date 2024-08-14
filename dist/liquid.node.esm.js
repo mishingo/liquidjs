@@ -2120,10 +2120,12 @@ class Tokenizer {
         // Check for dynamic variable syntax ${...}
         if (this.peek() === '$' && this.peek(1) === '{') {
             this.p += 2; // skip "${"
+            console.log('Found dynamic variable syntax'); // Debug log
             const dynamicVariable = this.readExpression(); // Read the inner expression
             this.assert(dynamicVariable.valid(), `invalid dynamic variable expression: ${this.snapshot()}`);
             this.assert(this.peek() === '}', `expected "}" at the end of dynamic variable expression`);
             this.p++; // skip "}"
+            console.log('Parsed dynamic variable:', dynamicVariable); // Debug log
             // Create a PropertyAccessToken for the dynamic variable
             const props = this.readProperties(false);
             //@ts-ignore
