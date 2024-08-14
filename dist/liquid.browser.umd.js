@@ -1588,8 +1588,6 @@
                 case 1: return [2 /*return*/, _a.sent()];
                 case 2: return [2 /*return*/, token.content];
                 case 3:
-                    if ('content' in token)
-                        return [2 /*return*/, token.content];
                     if (!isPropertyAccessToken(token)) return [3 /*break*/, 5];
                     return [4 /*yield*/, evalPropertyAccessToken(token, ctx, lenient)];
                 case 4: return [2 /*return*/, _a.sent()];

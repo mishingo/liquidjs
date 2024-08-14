@@ -44,7 +44,7 @@ export function * evalToken (token: Token | undefined, ctx: Context, lenient = f
     }
     return token.content
   }
-  if ('content' in token) return token.content
+  // if ('content' in token) return token.content
   if (isPropertyAccessToken(token)) return yield evalPropertyAccessToken(token, ctx, lenient)
   if (isRangeToken(token)) return yield evalRangeToken(token, ctx)
 }

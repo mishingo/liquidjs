@@ -1249,8 +1249,7 @@ function* evalToken(token, ctx, lenient = false) {
         }
         return token.content;
     }
-    if ('content' in token)
-        return token.content;
+    // if ('content' in token) return token.content
     if (isPropertyAccessToken(token))
         return yield evalPropertyAccessToken(token, ctx, lenient);
     if (isRangeToken(token))
