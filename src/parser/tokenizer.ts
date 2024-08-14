@@ -213,7 +213,29 @@ export class Tokenizer {
     }
     return -1;
   }
+  readOutputToken(options: NormalizedFullOptions = defaultOptions): OutputToken {
+    const { file, input } = this;
+    const { outputDelimiterRight } = options;
+    const begin = this.p;
 
+    if (this.readToDelimiter(outputDelimiterRight, true) === -1) {
+      throw this.error(`output ${this.snapshot(begin)} not closed`, begin);
+    }
+
+    // Extract the raw expression inside the delimiters
+    let expressionContent = input.slice(begin + options.outputDelimiterLeft.length, this.p - outputDelimiterRight.length).trim();
+
+    // Check if the expression is wrapped in ${...}
+    if (expressionContent.startsWith('${') && expressionContent.endsWith('}')) {
+      // Strip ${ and }
+      expressionContent = expressionContent.slice(2, -1).trim();
+    }
+    console.log(expressionContent)
+    // Return the OutputToken with the cleaned expression content
+    return new OutputToken(expressionContent, begin, this.p, options, file);
+  }
+
+  /*
   readOutputToken (options: NormalizedFullOptions = defaultOptions): OutputToken {
     const { file, input } = this
     const { outputDelimiterRight } = options
@@ -223,6 +245,7 @@ export class Tokenizer {
     }
     return new OutputToken(input, begin, this.p, options, file)
   }
+    */
 
   readEndrawOrRawContent (options: NormalizedFullOptions): HTMLToken | TagToken {
     const { tagDelimiterLeft, tagDelimiterRight } = options;
@@ -353,7 +376,7 @@ export class Tokenizer {
     }
     return -1;
   }
-
+/*
   readValue (): ValueToken | undefined {
     this.skipBlank();
     const begin = this.p;
@@ -376,6 +399,15 @@ export class Tokenizer {
     const props = this.readProperties(!variable);
     if (!props.length) return variable;
     return new PropertyAccessToken(variable, props, this.input, begin, this.p);
+  }
+    */
+  readValue (): ValueToken | undefined {
+    this.skipBlank()
+    const begin = this.p
+    const variable = this.readLiteral() || this.readQuoted() || this.readRange() || this.readNumber()
+    const props = this.readProperties(!variable)
+    if (!props.length) return variable
+    return new PropertyAccessToken(variable, props, this.input, begin, this.p)
   }
 
   readScopeValue (): ValueToken | undefined {
