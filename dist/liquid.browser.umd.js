@@ -1584,14 +1584,8 @@
                     // Handle `${...}` syntax
                     console.log('token', token, typeof token);
                     if (!('content' in token && typeof token.content === 'string')) return [3 /*break*/, 3];
-                    console.log('passed check');
-                    console.log(token.content);
-                    console.log(token.content.startsWith('${'));
-                    console.log(token.content.endsWith('}'));
                     if (!(token.content.startsWith('${') && token.content.endsWith('}'))) return [3 /*break*/, 2];
-                    console.log('passed check 2');
                     variableName = token.content.slice(2, -1).trim();
-                    console.log(ctx._get(variableName.split('.')));
                     return [4 /*yield*/, ctx._get(variableName.split('.'))];
                 case 1: return [2 /*return*/, _a.sent()];
                 case 2: return [2 /*return*/, token.content];
