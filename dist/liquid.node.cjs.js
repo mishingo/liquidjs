@@ -1248,7 +1248,7 @@ function* evalToken(token, ctx, lenient = false) {
             const variableName = token.content.slice(2, -1).trim();
             return yield ctx._get(variableName.split('.'));
         }
-        return token.content;
+        return yield ctx._get([token.content]); // Ensure it's retrieving from context
     }
     // if ('content' in token) return token.content
     if (isPropertyAccessToken(token))

@@ -1583,21 +1583,22 @@
                         return [2 /*return*/];
                     // Handle `${...}` syntax
                     console.log('token', token, typeof token);
-                    if (!('content' in token && typeof token.content === 'string')) return [3 /*break*/, 3];
+                    if (!('content' in token && typeof token.content === 'string')) return [3 /*break*/, 4];
                     if (!(token.content.startsWith('${') && token.content.endsWith('}'))) return [3 /*break*/, 2];
                     variableName = token.content.slice(2, -1).trim();
                     return [4 /*yield*/, ctx._get(variableName.split('.'))];
                 case 1: return [2 /*return*/, _a.sent()];
-                case 2: return [2 /*return*/, token.content];
-                case 3:
-                    if (!isPropertyAccessToken(token)) return [3 /*break*/, 5];
+                case 2: return [4 /*yield*/, ctx._get([token.content])];
+                case 3: return [2 /*return*/, _a.sent()]; // Ensure it's retrieving from context
+                case 4:
+                    if (!isPropertyAccessToken(token)) return [3 /*break*/, 6];
                     return [4 /*yield*/, evalPropertyAccessToken(token, ctx, lenient)];
-                case 4: return [2 /*return*/, _a.sent()];
-                case 5:
-                    if (!isRangeToken(token)) return [3 /*break*/, 7];
+                case 5: return [2 /*return*/, _a.sent()];
+                case 6:
+                    if (!isRangeToken(token)) return [3 /*break*/, 8];
                     return [4 /*yield*/, evalRangeToken(token, ctx)];
-                case 6: return [2 /*return*/, _a.sent()];
-                case 7: return [2 /*return*/];
+                case 7: return [2 /*return*/, _a.sent()];
+                case 8: return [2 /*return*/];
             }
         });
     }
