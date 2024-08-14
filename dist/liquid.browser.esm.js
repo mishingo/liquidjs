@@ -923,11 +923,32 @@ class TagToken extends DelimitedToken {
     }
 }
 
+/*
+export class OutputToken extends DelimitedToken {
+  public constructor (
+    input: string,
+    begin: number,
+    end: number,
+    options: NormalizedFullOptions,
+    file?: string
+  ) {
+    const { trimOutputLeft, trimOutputRight, outputDelimiterLeft, outputDelimiterRight } = options
+    const valueRange: [number, number] = [begin + outputDelimiterLeft.length, end - outputDelimiterRight.length]
+    super(TokenKind.Output, valueRange, input, begin, end, trimOutputLeft, trimOutputRight, file)
+  }
+}
+*/
 class OutputToken extends DelimitedToken {
     constructor(input, begin, end, options, file) {
         const { trimOutputLeft, trimOutputRight, outputDelimiterLeft, outputDelimiterRight } = options;
         const valueRange = [begin + outputDelimiterLeft.length, end - outputDelimiterRight.length];
-        super(TokenKind.Output, valueRange, input, begin, end, trimOutputLeft, trimOutputRight, file);
+        // Extract the content within the delimiters
+        let content = input.slice(valueRange[0], valueRange[1]).trim();
+        // Check for and handle `${}` syntax
+        const regex = /\$\{([^}]+)\}/g;
+        content = content.replace(regex, (match, p1) => p1.trim());
+        // Use the modified content in the parent constructor
+        super(TokenKind.Output, [begin + outputDelimiterLeft.length, begin + outputDelimiterLeft.length + content.length], content, begin, end, trimOutputLeft, trimOutputRight, file);
     }
 }
 
@@ -1980,33 +2001,11 @@ class Tokenizer {
         const { file, input } = this;
         const { outputDelimiterRight } = options;
         const begin = this.p;
-        if (this.match('${')) {
-            this.p += 2; // Skip the `${`
-            const variableStart = this.p;
-            while (this.p < this.N && this.input[this.p] !== '}') {
-                this.p++;
-            }
-            const variable = this.input.slice(variableStart, this.p);
-            this.p++; // Skip the `}`
-            const content = `{{ ${variable.trim()} }}`; // Formulate as a standard Liquid variable
-            return new OutputToken(content, begin, this.p, options, file);
-        }
         if (this.readToDelimiter(outputDelimiterRight, true) === -1) {
             throw this.error(`output ${this.snapshot(begin)} not closed`, begin);
         }
         return new OutputToken(input, begin, this.p, options, file);
     }
-    /*
-    readOutputToken (options: NormalizedFullOptions = defaultOptions): OutputToken {
-      const { file, input } = this
-      const { outputDelimiterRight } = options
-      const begin = this.p
-      if (this.readToDelimiter(outputDelimiterRight, true) === -1) {
-        throw this.error(`output ${this.snapshot(begin)} not closed`, begin)
-      }
-      return new OutputToken(input, begin, this.p, options, file)
-    }
-      */
     readEndrawOrRawContent(options) {
         const { tagDelimiterLeft, tagDelimiterRight } = options;
         const begin = this.p;
@@ -2132,15 +2131,17 @@ class Tokenizer {
     readValue() {
         this.skipBlank();
         const begin = this.p;
-        console.log(this.p);
         // Check for `${` and skip it if found
         if (this.match('${')) {
             this.p += 2; // Skip the `${`
+            const variableStart = this.p;
             while (this.p < this.N && this.input[this.p] !== '}') {
                 this.p++;
             }
+            const variableName = this.input.slice(variableStart, this.p).trim();
             this.p++; // Skip the `}`
-            return new LiteralToken(this.input, begin, this.p, this.file);
+            // You could return a LiteralToken or an IdentifierToken based on your needs
+            return new IdentifierToken(variableName, begin, this.p, this.file);
         }
         const variable = this.readLiteral() || this.readQuoted() || this.readRange() || this.readNumber();
         const props = this.readProperties(!variable);

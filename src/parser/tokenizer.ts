@@ -199,8 +199,6 @@ export class Tokenizer {
     }
   }
   
-  
-
   readToDelimiter (delimiter: string, respectQuoted = false) {
     this.skipBlank();
     while (this.p < this.N) {
@@ -213,29 +211,7 @@ export class Tokenizer {
     }
     return -1;
   }
-  readOutputToken (options: NormalizedFullOptions = defaultOptions): OutputToken {
-    const { file, input } = this;
-    const { outputDelimiterRight } = options;
-    const begin = this.p;
 
-    if (this.match('${')) {
-      this.p += 2;  // Skip the `${`
-      const variableStart = this.p;
-      while (this.p < this.N && this.input[this.p] !== '}') {
-        this.p++;
-      }
-      const variable = this.input.slice(variableStart, this.p);
-      this.p++;  // Skip the `}`
-      const content = `{{ ${variable.trim()} }}`;  // Formulate as a standard Liquid variable
-      return new OutputToken(content, begin, this.p, options, file);
-    }
-
-    if (this.readToDelimiter(outputDelimiterRight, true) === -1) {
-      throw this.error(`output ${this.snapshot(begin)} not closed`, begin);
-    }
-    return new OutputToken(input, begin, this.p, options, file);
-  }
-  /*
   readOutputToken (options: NormalizedFullOptions = defaultOptions): OutputToken {
     const { file, input } = this
     const { outputDelimiterRight } = options
@@ -245,7 +221,6 @@ export class Tokenizer {
     }
     return new OutputToken(input, begin, this.p, options, file)
   }
-    */
 
   readEndrawOrRawContent (options: NormalizedFullOptions): HTMLToken | TagToken {
     const { tagDelimiterLeft, tagDelimiterRight } = options;
@@ -379,15 +354,18 @@ export class Tokenizer {
   readValue (): ValueToken | undefined {
     this.skipBlank()
     const begin = this.p
-    console.log(this.p)
+
     // Check for `${` and skip it if found
     if (this.match('${')) {
-      this.p += 2// Skip the `${`
+      this.p += 2;  // Skip the `${`
+      const variableStart = this.p;
       while (this.p < this.N && this.input[this.p] !== '}') {
-        this.p++
+        this.p++;
       }
-      this.p++// Skip the `}`
-      return new LiteralToken(this.input, begin, this.p, this.file)
+      const variableName = this.input.slice(variableStart, this.p).trim();
+      this.p++;// Skip the `}`
+      // You could return a LiteralToken or an IdentifierToken based on your needs
+      return new IdentifierToken(variableName, begin, this.p, this.file);
     }
 
     const variable = this.readLiteral() || this.readQuoted() || this.readRange() || this.readNumber();
