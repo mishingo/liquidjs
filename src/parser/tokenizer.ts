@@ -35,34 +35,17 @@ export class Tokenizer {
 
   * readExpressionTokens (): IterableIterator<Token> {
     while (this.p < this.N) {
-      const operator = this.readOperator();
+      const operator = this.readOperator()
       if (operator) {
-        yield operator;
-        continue;
+        yield operator
+        continue
       }
-       // Check for ${...} syntax
-       if (this.peek() === '$' && this.peek(1) === '{') {
-        this.p += 2; // Move past '${'
-        const begin = this.p;
-
-        // Read until the closing '}'
-        while (this.p < this.N && this.peek() !== '}') {
-          this.p++;
-        }
-        if (this.peek() === '}') {
-          const variableName = this.input.slice(begin, this.p).trim();
-          this.p++; // Move past '}'
-          yield new IdentifierToken(variableName, begin, this.p, this.file);
-          continue;
-        }
-      }
-      
-      const operand = this.readValue();
+      const operand = this.readValue()
       if (operand) {
-        yield operand;
-        continue;
+        yield operand
+        continue
       }
-      return;
+      return
     }
   }
 
@@ -235,11 +218,22 @@ export class Tokenizer {
     const { file, input } = this;
     const { outputDelimiterRight } = options;
     const begin = this.p;
+  
     if (this.readToDelimiter(outputDelimiterRight, true) === -1) {
       throw this.error(`output ${this.snapshot(begin)} not closed`, begin);
     }
-    return new OutputToken(input, begin, this.p, options, file);
+  
+    // Extract the token content and check for ${...} syntax
+    let content = input.slice(begin + 2, this.p - 2).trim(); // Strip the delimiters {{ and }}
+    
+    if (content.startsWith('${') && content.endsWith('}')) {
+      content = content.slice(2, -1).trim(); // Strip the ${ and }
+    }
+  
+    // Now pass the content (which may be modified) to the OutputToken constructor
+    return new OutputToken(content, begin, this.p, options, file);
   }
+  
 
   readEndrawOrRawContent (options: NormalizedFullOptions): HTMLToken | TagToken {
     const { tagDelimiterLeft, tagDelimiterRight } = options;

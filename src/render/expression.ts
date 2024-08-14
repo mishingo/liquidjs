@@ -36,16 +36,7 @@ export class Expression {
 
 export function * evalToken (token: Token | undefined, ctx: Context, lenient = false): IterableIterator<unknown> {
   if (!token) return
-  // Handle `${...}` syntax
-  console.log('token', token, typeof token)
-  if ('content' in token && typeof token.content === 'string') {
-    if (token.content.startsWith('${') && token.content.endsWith('}')) {
-      const variableName = token.content.slice(2, -1).trim();
-      return yield ctx._get(variableName.split('.'));
-    }
-    return yield ctx._get([token.content]); // Ensure it's retrieving from context
-  }
-  // if ('content' in token) return token.content
+  if ('content' in token) return token.content
   if (isPropertyAccessToken(token)) return yield evalPropertyAccessToken(token, ctx, lenient)
   if (isRangeToken(token)) return yield evalRangeToken(token, ctx)
 }

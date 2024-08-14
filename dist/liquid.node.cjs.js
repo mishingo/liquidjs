@@ -1241,16 +1241,8 @@ class Expression {
 function* evalToken(token, ctx, lenient = false) {
     if (!token)
         return;
-    // Handle `${...}` syntax
-    console.log('token', token, typeof token);
-    if ('content' in token && typeof token.content === 'string') {
-        if (token.content.startsWith('${') && token.content.endsWith('}')) {
-            const variableName = token.content.slice(2, -1).trim();
-            return yield ctx._get(variableName.split('.'));
-        }
-        return yield ctx._get([token.content]); // Ensure it's retrieving from context
-    }
-    // if ('content' in token) return token.content
+    if ('content' in token)
+        return token.content;
     if (isPropertyAccessToken(token))
         return yield evalPropertyAccessToken(token, ctx, lenient);
     if (isRangeToken(token))
@@ -1776,21 +1768,6 @@ class Tokenizer {
                 yield operator;
                 continue;
             }
-            // Check for ${...} syntax
-            if (this.peek() === '$' && this.peek(1) === '{') {
-                this.p += 2; // Move past '${'
-                const begin = this.p;
-                // Read until the closing '}'
-                while (this.p < this.N && this.peek() !== '}') {
-                    this.p++;
-                }
-                if (this.peek() === '}') {
-                    const variableName = this.input.slice(begin, this.p).trim();
-                    this.p++; // Move past '}'
-                    yield new IdentifierToken(variableName, begin, this.p, this.file);
-                    continue;
-                }
-            }
             const operand = this.readValue();
             if (operand) {
                 yield operand;
@@ -1968,7 +1945,13 @@ class Tokenizer {
         if (this.readToDelimiter(outputDelimiterRight, true) === -1) {
             throw this.error(`output ${this.snapshot(begin)} not closed`, begin);
         }
-        return new OutputToken(input, begin, this.p, options, file);
+        // Extract the token content and check for ${...} syntax
+        let content = input.slice(begin + 2, this.p - 2).trim(); // Strip the delimiters {{ and }}
+        if (content.startsWith('${') && content.endsWith('}')) {
+            content = content.slice(2, -1).trim(); // Strip the ${ and }
+        }
+        // Now pass the content (which may be modified) to the OutputToken constructor
+        return new OutputToken(content, begin, this.p, options, file);
     }
     readEndrawOrRawContent(options) {
         const { tagDelimiterLeft, tagDelimiterRight } = options;

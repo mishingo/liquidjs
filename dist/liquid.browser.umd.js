@@ -1574,31 +1574,22 @@
         return Expression;
     }());
     function evalToken(token, ctx, lenient) {
-        var variableName;
         if (lenient === void 0) { lenient = false; }
         return __generator(this, function (_a) {
             switch (_a.label) {
                 case 0:
                     if (!token)
                         return [2 /*return*/];
-                    // Handle `${...}` syntax
-                    console.log('token', token, typeof token);
-                    if (!('content' in token && typeof token.content === 'string')) return [3 /*break*/, 4];
-                    if (!(token.content.startsWith('${') && token.content.endsWith('}'))) return [3 /*break*/, 2];
-                    variableName = token.content.slice(2, -1).trim();
-                    return [4 /*yield*/, ctx._get(variableName.split('.'))];
-                case 1: return [2 /*return*/, _a.sent()];
-                case 2: return [4 /*yield*/, ctx._get([token.content])];
-                case 3: return [2 /*return*/, _a.sent()]; // Ensure it's retrieving from context
-                case 4:
-                    if (!isPropertyAccessToken(token)) return [3 /*break*/, 6];
+                    if ('content' in token)
+                        return [2 /*return*/, token.content];
+                    if (!isPropertyAccessToken(token)) return [3 /*break*/, 2];
                     return [4 /*yield*/, evalPropertyAccessToken(token, ctx, lenient)];
-                case 5: return [2 /*return*/, _a.sent()];
-                case 6:
-                    if (!isRangeToken(token)) return [3 /*break*/, 8];
+                case 1: return [2 /*return*/, _a.sent()];
+                case 2:
+                    if (!isRangeToken(token)) return [3 /*break*/, 4];
                     return [4 /*yield*/, evalRangeToken(token, ctx)];
-                case 7: return [2 /*return*/, _a.sent()];
-                case 8: return [2 /*return*/];
+                case 3: return [2 /*return*/, _a.sent()];
+                case 4: return [2 /*return*/];
             }
         });
     }
@@ -2246,11 +2237,11 @@
             return new Expression(this.readExpressionTokens());
         };
         Tokenizer.prototype.readExpressionTokens = function () {
-            var operator, begin, variableName, operand;
+            var operator, operand;
             return __generator(this, function (_a) {
                 switch (_a.label) {
                     case 0:
-                        if (!(this.p < this.N)) return [3 /*break*/, 7];
+                        if (!(this.p < this.N)) return [3 /*break*/, 5];
                         operator = this.readOperator();
                         if (!operator) return [3 /*break*/, 2];
                         return [4 /*yield*/, operator];
@@ -2258,29 +2249,14 @@
                         _a.sent();
                         return [3 /*break*/, 0];
                     case 2:
-                        if (!(this.peek() === '$' && this.peek(1) === '{')) return [3 /*break*/, 4];
-                        this.p += 2; // Move past '${'
-                        begin = this.p;
-                        // Read until the closing '}'
-                        while (this.p < this.N && this.peek() !== '}') {
-                            this.p++;
-                        }
-                        if (!(this.peek() === '}')) return [3 /*break*/, 4];
-                        variableName = this.input.slice(begin, this.p).trim();
-                        this.p++; // Move past '}'
-                        return [4 /*yield*/, new IdentifierToken(variableName, begin, this.p, this.file)];
+                        operand = this.readValue();
+                        if (!operand) return [3 /*break*/, 4];
+                        return [4 /*yield*/, operand];
                     case 3:
                         _a.sent();
                         return [3 /*break*/, 0];
-                    case 4:
-                        operand = this.readValue();
-                        if (!operand) return [3 /*break*/, 6];
-                        return [4 /*yield*/, operand];
-                    case 5:
-                        _a.sent();
-                        return [3 /*break*/, 0];
-                    case 6: return [2 /*return*/];
-                    case 7: return [2 /*return*/];
+                    case 4: return [2 /*return*/];
+                    case 5: return [2 /*return*/];
                 }
             });
         };
@@ -2458,7 +2434,13 @@
             if (this.readToDelimiter(outputDelimiterRight, true) === -1) {
                 throw this.error("output ".concat(this.snapshot(begin), " not closed"), begin);
             }
-            return new OutputToken(input, begin, this.p, options, file);
+            // Extract the token content and check for ${...} syntax
+            var content = input.slice(begin + 2, this.p - 2).trim(); // Strip the delimiters {{ and }}
+            if (content.startsWith('${') && content.endsWith('}')) {
+                content = content.slice(2, -1).trim(); // Strip the ${ and }
+            }
+            // Now pass the content (which may be modified) to the OutputToken constructor
+            return new OutputToken(content, begin, this.p, options, file);
         };
         Tokenizer.prototype.readEndrawOrRawContent = function (options) {
             var tagDelimiterLeft = options.tagDelimiterLeft, tagDelimiterRight = options.tagDelimiterRight;
