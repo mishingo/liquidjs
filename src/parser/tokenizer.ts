@@ -100,6 +100,7 @@ export class Tokenizer {
     if (this.match('${')) {
       this.p += 2; // skip "${"
       const dynamicExpression = this.readExpression(); // Parse the expression inside ${}
+      console.log('dynamicExpression', dynamicExpression)
       this.assert(dynamicExpression.valid(), `invalid value expression: ${this.snapshot()}`);
       this.assert(this.peek() === '}', `expected "}" at the end of dynamic expression`);
       this.p++; // skip "}"
