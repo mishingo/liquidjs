@@ -1953,7 +1953,7 @@ class Tokenizer {
             return new FilteredValueToken(dynamicExpression, [], this.input, begin, this.p, this.file);
         }
         const initial = this.readExpression();
-        this.assert(initial.valid(), `invalid value expression: ${this.snapshot()} : ${initial}`);
+        this.assert(initial.valid(), `invalid value expression: ${this.snapshot()} : ${JSON.stringify(initial)}`);
         const filters = this.readFilters();
         return new FilteredValueToken(initial, filters, this.input, begin, this.p, this.file);
     }

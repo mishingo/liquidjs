@@ -2401,7 +2401,7 @@
                 return new FilteredValueToken(dynamicExpression, [], this.input, begin, this.p, this.file);
             }
             var initial = this.readExpression();
-            this.assert(initial.valid(), "invalid value expression: ".concat(this.snapshot(), " : ").concat(initial));
+            this.assert(initial.valid(), "invalid value expression: ".concat(this.snapshot(), " : ").concat(JSON.stringify(initial)));
             var filters = this.readFilters();
             return new FilteredValueToken(initial, filters, this.input, begin, this.p, this.file);
         };
