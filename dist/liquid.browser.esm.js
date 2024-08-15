@@ -1281,22 +1281,12 @@ class Expression {
         return !!this.postfix.length;
     }
 }
-function* evalToken(token, ctx, lenient = false) {
-    if (!token)
-        return;
-    if ('content' in token)
-        return token.content;
-    if (isPropertyAccessToken(token))
-        return yield evalPropertyAccessToken(token, ctx, lenient);
-    if (isRangeToken(token))
-        return yield evalRangeToken(token, ctx);
-}
 function* evalPropertyAccessToken(token, ctx, lenient) {
     const props = [];
     for (const prop of token.props) {
         let propValue = yield evalToken(prop, ctx, false);
         if (typeof propValue === 'string') {
-            // Handle dynamic expressions within ${} only if propValue is a string
+            // If the propValue is a string and might be dynamic, handle it
             //@ts-ignore
             if (propValue.startsWith('${') && propValue.endsWith('}')) {
                 //@ts-ignore
@@ -1321,6 +1311,63 @@ function* evalPropertyAccessToken(token, ctx, lenient) {
         throw new UndefinedVariableError(e, token);
     }
 }
+function* evalToken(token, ctx, lenient = false) {
+    if (!token)
+        return;
+    if ('content' in token) {
+        let content = token.content;
+        // Handle dynamic expressions within ${} if the content is a string
+        if (typeof content === 'string' && content.startsWith('${') && content.endsWith('}')) {
+            const variableName = content.slice(2, -1); // extract variable name
+            content = yield ctx._get(variableName); // resolve variable from context
+        }
+        return content;
+    }
+    if (isPropertyAccessToken(token)) {
+        return yield evalPropertyAccessToken(token, ctx, lenient);
+    }
+    if (isRangeToken(token)) {
+        return yield evalRangeToken(token, ctx);
+    }
+}
+/*
+export function * evalToken (token: Token | undefined, ctx: Context, lenient = false): IterableIterator<unknown> {
+  if (!token) return
+  if ('content' in token) return token.content
+  if (isPropertyAccessToken(token)) return yield evalPropertyAccessToken(token, ctx, lenient)
+  if (isRangeToken(token)) return yield evalRangeToken(token, ctx)
+}
+
+function * evalPropertyAccessToken(token: PropertyAccessToken, ctx: Context, lenient: boolean): IterableIterator<unknown> {
+  const props: string[] = [];
+  for (const prop of token.props) {
+    let propValue = yield evalToken(prop, ctx, false);
+
+    if (typeof propValue === 'string') {
+      // Handle dynamic expressions within ${} only if propValue is a string
+      //@ts-ignore
+      if (propValue.startsWith('${') && propValue.endsWith('}')) {
+        //@ts-ignore
+        propValue = propValue.slice(2, -1); // remove the `${` and `}`
+      }
+    }
+    //@ts-ignore
+    props.push(propValue);
+  }
+
+  try {
+    if (token.variable) {
+      const variable = yield evalToken(token.variable, ctx, lenient);
+      return yield ctx._getFromScope(variable, props);
+    } else {
+      return yield ctx._get(props);
+    }
+  } catch (e) {
+    if (lenient && (e as Error).name === 'InternalUndefinedVariableError') return null;
+    throw new UndefinedVariableError(e as Error, token);
+  }
+}
+
 /*
 working without []
 function * evalPropertyAccessToken(token: PropertyAccessToken, ctx: Context, lenient: boolean): IterableIterator<unknown> {
