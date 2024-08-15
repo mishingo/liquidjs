@@ -1904,11 +1904,11 @@ class Tokenizer {
     readFilteredValue() {
         const begin = this.p;
         // Check if the expression starts with ${ indicating a dynamic expression
+        console.log(this);
         if (this.match('${')) {
             this.p += 2; // skip "${"
             const dynamicExpression = this.readExpression(); // Parse the expression inside ${}
-            console.log(dynamicExpression);
-            this.assert(dynamicExpression.valid(), `invalid value expression: ${this.snapshot()} : ${dynamicExpression}`);
+            this.assert(dynamicExpression.valid(), `invalid value expression: ${this.snapshot()}`);
             this.assert(this.peek() === '}', `expected "}" at the end of dynamic expression`);
             this.p++; // skip "}"
             // Return the dynamic expression directly as a FilteredValueToken
