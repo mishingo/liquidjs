@@ -1387,7 +1387,6 @@
         __extends(LiquidTagToken, _super);
         function LiquidTagToken(input, begin, end, options, file) {
             var _this = _super.call(this, exports.TokenKind.Tag, [begin, end], input, begin, end, false, false, file) || this;
-            console.log(input);
             _this.tokenizer = new Tokenizer(input, options.operators, file, _this.contentRange);
             _this.name = _this.tokenizer.readTagName();
             _this.tokenizer.assert(_this.name, 'illegal liquid tag syntax');
@@ -3463,6 +3462,7 @@
         }
         Parser.prototype.parse = function (html, filepath) {
             html = String(html);
+            console.log(html);
             this.parseLimit.use(html.length);
             var tokenizer = new Tokenizer(html, this.liquid.options.operators, filepath);
             var tokens = tokenizer.readTopLevelTokens(this.liquid.options);
