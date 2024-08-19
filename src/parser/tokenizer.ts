@@ -102,7 +102,6 @@ export class Tokenizer {
     const begin = this.p;
     // Check if the expression starts with ${ indicating a dynamic expression
     if (this.match('$')) {
-      console.log('matched a ${}')
       this.p += 2; // skip "${"
       const dynamicExpression = this.readExpression(); // Parse the expression inside ${}
      
@@ -112,7 +111,6 @@ export class Tokenizer {
       // Return the dynamic expression directly as a FilteredValueToken
       return new FilteredValueToken(dynamicExpression, [], this.input, begin, this.p, this.file);
     }
-    console.log('reading expression')
     const initial = this.readExpression();
     this.assert(initial.valid(), `invalid value expression: ${this.snapshot()} : ${JSON.stringify(initial)}`);
     const filters = this.readFilters();
@@ -616,7 +614,6 @@ export class Tokenizer {
 
   match (word: string) {
     for (let i = 0; i < word.length; i++) {
-      console.log(this.input[this.p + i])
       if (word[i] !== this.input[this.p + i]) return false;
     }
     return true;

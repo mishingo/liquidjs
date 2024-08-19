@@ -1387,6 +1387,7 @@
         __extends(LiquidTagToken, _super);
         function LiquidTagToken(input, begin, end, options, file) {
             var _this = _super.call(this, exports.TokenKind.Tag, [begin, end], input, begin, end, false, false, file) || this;
+            console.log(input);
             _this.tokenizer = new Tokenizer(input, options.operators, file, _this.contentRange);
             _this.name = _this.tokenizer.readTagName();
             _this.tokenizer.assert(_this.name, 'illegal liquid tag syntax');
@@ -2411,7 +2412,6 @@
             var begin = this.p;
             // Check if the expression starts with ${ indicating a dynamic expression
             if (this.match('$')) {
-                console.log('matched a ${}');
                 this.p += 2; // skip "${"
                 var dynamicExpression = this.readExpression(); // Parse the expression inside ${}
                 this.assert(dynamicExpression.valid(), "invalid value expression: ".concat(this.snapshot()));
@@ -2420,7 +2420,6 @@
                 // Return the dynamic expression directly as a FilteredValueToken
                 return new FilteredValueToken(dynamicExpression, [], this.input, begin, this.p, this.file);
             }
-            console.log('reading expression');
             var initial = this.readExpression();
             this.assert(initial.valid(), "invalid value expression: ".concat(this.snapshot(), " : ").concat(JSON.stringify(initial)));
             var filters = this.readFilters();
@@ -2938,7 +2937,6 @@
         };
         Tokenizer.prototype.match = function (word) {
             for (var i = 0; i < word.length; i++) {
-                console.log(this.input[this.p + i]);
                 if (word[i] !== this.input[this.p + i])
                     return false;
             }
