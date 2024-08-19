@@ -17,6 +17,7 @@ export declare class Tokenizer {
     readOperator(): OperatorToken | undefined;
     matchTrie<T>(trie: Trie<T>): number;
     readFilteredValue(): FilteredValueToken;
+    readExpressionFromString(expression: string): Expression;
     readFilters(): FilterToken[];
     readFilter(): FilterToken | null;
     readFilterArg(): FilterArg | undefined;
