@@ -2701,8 +2701,8 @@ class Parser {
         this.parseLimit = new Limiter('parse length', liquid.options.parseLimit);
     }
     parse(html, filepath) {
-        html = String(html);
-        console.log(html.replace(/\$\{([^}]+)\}/g, '$1'));
+        html = String(html.replace(/\$\{([^}]+)\}/g, '$1'));
+        console.log(html);
         this.parseLimit.use(html.length);
         const tokenizer = new Tokenizer(html, this.liquid.options.operators, filepath);
         const tokens = tokenizer.readTopLevelTokens(this.liquid.options);
