@@ -2399,16 +2399,16 @@
             expression = expression.replace(/\$\{([^}]+)\}/g, '$1');
             // Update the tokenizer's position after the replacement
             this.p = this.input.indexOf(expression, begin) + expression.length;
-            // Process the expression as usual
+            // Process the expression as usual using a temporary tokenizer
             var initial = this.readExpressionFromString(expression);
             this.assert(initial.valid(), "invalid value expression: ".concat(this.snapshot()));
             var filters = this.readFilters();
             return new FilteredValueToken(initial, filters, this.input, begin, this.p, this.file);
         };
         Tokenizer.prototype.readExpressionFromString = function (expression) {
-            // Pass the current tokenizer's options to the new Tokenizer instance
+            // Pass the entire options object, not just operators
             //@ts-ignore
-            var tempTokenizer = new Tokenizer(expression, this.tokenizer.operators, this.file, [0, expression.length]);
+            var tempTokenizer = new Tokenizer(expression, this.tokenizer.options, this.file, [0, expression.length]);
             return tempTokenizer.readExpression();
         };
         /*
