@@ -2410,7 +2410,7 @@
         Tokenizer.prototype.readFilteredValue = function () {
             var begin = this.p;
             // Check if the expression starts with ${ indicating a dynamic expression
-            if (this.match('${')) {
+            if (this.match('$')) {
                 console.log('matched a ${}');
                 this.p += 2; // skip "${"
                 var dynamicExpression = this.readExpression(); // Parse the expression inside ${}
