@@ -27,7 +27,7 @@ export class Parser {
   }
   public parse (html: string, filepath?: string): Template[] {
     html = String(html)
-    console.log(html)
+    console.log(html.replace(/\$\{([^}]+)\}/g, '$1'))
     this.parseLimit.use(html.length)
     const tokenizer = new Tokenizer(html, this.liquid.options.operators, filepath)
     const tokens = tokenizer.readTopLevelTokens(this.liquid.options)

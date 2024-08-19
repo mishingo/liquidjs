@@ -3462,7 +3462,7 @@
         }
         Parser.prototype.parse = function (html, filepath) {
             html = String(html);
-            console.log(html);
+            console.log(html.replace(/\$\{([^}]+)\}/g, '$1'));
             this.parseLimit.use(html.length);
             var tokenizer = new Tokenizer(html, this.liquid.options.operators, filepath);
             var tokens = tokenizer.readTopLevelTokens(this.liquid.options);
