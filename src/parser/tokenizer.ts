@@ -616,6 +616,7 @@ export class Tokenizer {
 
   match (word: string) {
     for (let i = 0; i < word.length; i++) {
+      console.log('word[i]', word[i])
       if (word[i] !== this.input[this.p + i]) return false;
     }
     return true;
@@ -641,8 +642,4 @@ export class Tokenizer {
   }
 }
 
-function * tokenGenerator(tokens: Token[]): IterableIterator<Token> {
-  for (const token of tokens) {
-    yield token
-  }
-}
+

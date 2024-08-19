@@ -2938,6 +2938,7 @@
         };
         Tokenizer.prototype.match = function (word) {
             for (var i = 0; i < word.length; i++) {
+                console.log('word[i]', word[i]);
                 if (word[i] !== this.input[this.p + i])
                     return false;
             }
