@@ -1920,14 +1920,13 @@ class Tokenizer {
             return -1;
         return i;
     }
-    // v2
     readFilteredValue() {
         const begin = this.p;
         // Check if the expression starts with ${ indicating a dynamic expression
-        console.log(this);
         if (this.match('${')) {
             this.p += 2; // skip "${"
             const dynamicExpression = this.readExpression(); // Parse the expression inside ${}
+            // Validate the expression
             this.assert(dynamicExpression.valid(), `invalid value expression: ${this.snapshot()}`);
             this.assert(this.peek() === '}', `expected "}" at the end of dynamic expression`);
             this.p++; // skip "}"
@@ -1939,6 +1938,28 @@ class Tokenizer {
         const filters = this.readFilters();
         return new FilteredValueToken(initial, filters, this.input, begin, this.p, this.file);
     }
+    /*
+    // v2
+    readFilteredValue(): FilteredValueToken {
+      const begin = this.p;
+      // Check if the expression starts with ${ indicating a dynamic expression
+      console.log(this)
+      if (this.match('${')) {
+        this.p += 2; // skip "${"
+        const dynamicExpression = this.readExpression(); // Parse the expression inside ${}
+       
+        this.assert(dynamicExpression.valid(), `invalid value expression: ${this.snapshot()}`);
+        this.assert(this.peek() === '}', `expected "}" at the end of dynamic expression`);
+        this.p++; // skip "}"
+        // Return the dynamic expression directly as a FilteredValueToken
+        return new FilteredValueToken(dynamicExpression, [], this.input, begin, this.p, this.file);
+      }
+      const initial = this.readExpression();
+      this.assert(initial.valid(), `invalid value expression: ${this.snapshot()} : ${JSON.stringify(initial)}`);
+      const filters = this.readFilters();
+      return new FilteredValueToken(initial, filters, this.input, begin, this.p, this.file);
+    }
+    */
     /*
     readFilteredValue (): FilteredValueToken {
       const begin = this.p;
