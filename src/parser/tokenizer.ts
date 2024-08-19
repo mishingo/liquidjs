@@ -94,32 +94,8 @@ export class Tokenizer {
     if (info['needBoundary'] && isWord(this.peek(i - this.p))) return -1;
     return i;
   }
-  readFilteredValue(): FilteredValueToken {
-    const begin = this.p;
-    let expression = this.input.slice(this.p, this.N);
 
-    // Replace `${var_name}` with `var_name`
-    expression = expression.replace(/\$\{([^}]+)\}/g, '$1');
-
-    // Update the tokenizer's position after the replacement
-    this.p = this.input.indexOf(expression, begin) + expression.length;
-
-    // Process the expression as usual using a temporary tokenizer
-    const initial = this.readExpressionFromString(expression);
-    this.assert(initial.valid(), `invalid value expression: ${this.snapshot()}`);
-    const filters = this.readFilters();
-    
-    return new FilteredValueToken(initial, filters, this.input, begin, this.p, this.file);
-}
-
-  readExpressionFromString(expression: string): Expression {
-    // Pass the entire options object, not just operators
-    //@ts-ignore
-    const tempTokenizer = new Tokenizer(expression, this.tokenizer.options, this.file, [0, expression.length]);
-    return tempTokenizer.readExpression();
-  }
-  /*
-  pretty good v2
+  // v2
   readFilteredValue(): FilteredValueToken {
     const begin = this.p;
     // Check if the expression starts with ${ indicating a dynamic expression
@@ -139,7 +115,7 @@ export class Tokenizer {
     const filters = this.readFilters();
     return new FilteredValueToken(initial, filters, this.input, begin, this.p, this.file);
   }
-    */
+
   /*
   readFilteredValue (): FilteredValueToken {
     const begin = this.p;
