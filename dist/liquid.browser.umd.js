@@ -1392,8 +1392,13 @@
             _this.tokenizer.assert(_this.name, 'illegal liquid tag syntax');
             _this.tokenizer.skipBlank();
             _this.args = _this.tokenizer.remaining();
+            // Handle ${} syntax within arguments
+            _this.args = _this.processDollarCurlySyntax(_this.args);
             return _this;
         }
+        LiquidTagToken.prototype.processDollarCurlySyntax = function (args) {
+            return args.replace(/\$\{([^}]+)\}/g, '$1');
+        };
         return LiquidTagToken;
     }(DelimitedToken));
 

@@ -9,4 +9,5 @@ export declare class LiquidTagToken extends DelimitedToken {
     args: string;
     tokenizer: Tokenizer;
     constructor(input: string, begin: number, end: number, options: NormalizedFullOptions, file?: string);
+    private processDollarCurlySyntax;
 }

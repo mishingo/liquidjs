@@ -1131,6 +1131,11 @@ class LiquidTagToken extends DelimitedToken {
         this.tokenizer.assert(this.name, 'illegal liquid tag syntax');
         this.tokenizer.skipBlank();
         this.args = this.tokenizer.remaining();
+        // Handle ${} syntax within arguments
+        this.args = this.processDollarCurlySyntax(this.args);
+    }
+    processDollarCurlySyntax(args) {
+        return args.replace(/\$\{([^}]+)\}/g, '$1');
     }
 }
 

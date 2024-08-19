@@ -9,6 +9,7 @@ export class LiquidTagToken extends DelimitedToken {
   public name: string
   public args: string
   public tokenizer: Tokenizer
+
   public constructor (
     input: string,
     begin: number,
@@ -24,5 +25,12 @@ export class LiquidTagToken extends DelimitedToken {
 
     this.tokenizer.skipBlank()
     this.args = this.tokenizer.remaining()
+
+    // Handle ${} syntax within arguments
+    this.args = this.processDollarCurlySyntax(this.args)
+  }
+
+  private processDollarCurlySyntax(args: string): string {
+    return args.replace(/\$\{([^}]+)\}/g, '$1')
   }
 }
