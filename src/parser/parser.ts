@@ -26,8 +26,8 @@ export class Parser {
     this.parseLimit = new Limiter('parse length', liquid.options.parseLimit)
   }
   public parse (html: string, filepath?: string): Template[] {
-    console.log(html.match(/(?<!\{\{[^{]*)\$\{([^}]+)\}(?![^}]*\}\})/g))
-    html = String(html.replace(/(?<!\{\{[^{]*)\$\{([^}]+)\}(?![^}]*\}\})/g, '$1'))
+    console.log(html.match(/\{\{\s*\$\{([^}]+)\}\s*\}\}|\$\{([^}]+)\}(?!\s*\}\})/g))
+    html = String(html.replace(/\{\{\s*\$\{([^}]+)\}\s*\}\}|\$\{([^}]+)\}(?!\s*\}\})/g, '$1'))
 
     this.parseLimit.use(html.length)
     const tokenizer = new Tokenizer(html, this.liquid.options.operators, filepath)

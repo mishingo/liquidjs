@@ -3461,8 +3461,8 @@
             this.parseLimit = new Limiter('parse length', liquid.options.parseLimit);
         }
         Parser.prototype.parse = function (html, filepath) {
-            console.log(html.match(/(?<!\{\{[^{]*)\$\{([^}]+)\}(?![^}]*\}\})/g));
-            html = String(html.replace(/(?<!\{\{[^{]*)\$\{([^}]+)\}(?![^}]*\}\})/g, '$1'));
+            console.log(html.match(/\{\{\s*\$\{([^}]+)\}\s*\}\}|\$\{([^}]+)\}(?!\s*\}\})/g));
+            html = String(html.replace(/\{\{\s*\$\{([^}]+)\}\s*\}\}|\$\{([^}]+)\}(?!\s*\}\})/g, '$1'));
             this.parseLimit.use(html.length);
             var tokenizer = new Tokenizer(html, this.liquid.options.operators, filepath);
             var tokens = tokenizer.readTopLevelTokens(this.liquid.options);
