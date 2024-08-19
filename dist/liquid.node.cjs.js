@@ -1270,13 +1270,27 @@ class Expression {
 function* evalToken(token, ctx, lenient = false) {
     if (!token)
         return;
-    if ('content' in token)
-        return token.content;
+    let content = 'content' in token ? token.content : undefined;
+    if (typeof content === 'string' && content.includes('${')) {
+        content = content.replace(/\$\{([^}]+)\}/g, (_, varName) => {
+            return String(ctx._get(varName.trim())); // Use `_get()` instead of `get()`
+        });
+    }
     if (isPropertyAccessToken(token))
         return yield evalPropertyAccessToken(token, ctx, lenient);
     if (isRangeToken(token))
         return yield evalRangeToken(token, ctx);
+    return content;
 }
+/*
+original
+export function * evalToken (token: Token | undefined, ctx: Context, lenient = false): IterableIterator<unknown> {
+  if (!token) return
+  if ('content' in token) return token.content
+  if (isPropertyAccessToken(token)) return yield evalPropertyAccessToken(token, ctx, lenient)
+  if (isRangeToken(token)) return yield evalRangeToken(token, ctx)
+}
+*/
 function* evalPropertyAccessToken(token, ctx, lenient) {
     const props = [];
     for (const prop of token.props) {

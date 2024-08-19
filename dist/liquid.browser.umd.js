@@ -1603,14 +1603,19 @@
         return Expression;
     }());
     function evalToken(token, ctx, lenient) {
+        var content;
         if (lenient === void 0) { lenient = false; }
         return __generator(this, function (_a) {
             switch (_a.label) {
                 case 0:
                     if (!token)
                         return [2 /*return*/];
-                    if ('content' in token)
-                        return [2 /*return*/, token.content];
+                    content = 'content' in token ? token.content : undefined;
+                    if (typeof content === 'string' && content.includes('${')) {
+                        content = content.replace(/\$\{([^}]+)\}/g, function (_, varName) {
+                            return String(ctx._get(varName.trim())); // Use `_get()` instead of `get()`
+                        });
+                    }
                     if (!isPropertyAccessToken(token)) return [3 /*break*/, 2];
                     return [4 /*yield*/, evalPropertyAccessToken(token, ctx, lenient)];
                 case 1: return [2 /*return*/, _a.sent()];
@@ -1618,10 +1623,19 @@
                     if (!isRangeToken(token)) return [3 /*break*/, 4];
                     return [4 /*yield*/, evalRangeToken(token, ctx)];
                 case 3: return [2 /*return*/, _a.sent()];
-                case 4: return [2 /*return*/];
+                case 4: return [2 /*return*/, content];
             }
         });
     }
+    /*
+    original
+    export function * evalToken (token: Token | undefined, ctx: Context, lenient = false): IterableIterator<unknown> {
+      if (!token) return
+      if ('content' in token) return token.content
+      if (isPropertyAccessToken(token)) return yield evalPropertyAccessToken(token, ctx, lenient)
+      if (isRangeToken(token)) return yield evalRangeToken(token, ctx)
+    }
+    */
     function evalPropertyAccessToken(token, ctx, lenient) {
         var props, _a, _b, prop, propValue, e_2_1, variable, e_3;
         var e_2, _c;
