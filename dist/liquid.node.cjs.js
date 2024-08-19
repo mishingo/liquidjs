@@ -1920,9 +1920,9 @@ class Tokenizer {
         return new FilteredValueToken(initial, filters, this.input, begin, this.p, this.file);
     }
     readExpressionFromString(expression) {
-        // Create a temporary tokenizer for the expression
+        // Pass the current tokenizer's options to the new Tokenizer instance
         //@ts-ignore
-        const tempTokenizer = new Tokenizer(expression, this.tokenizer.operators, this.file);
+        const tempTokenizer = new Tokenizer(expression, this.tokenizer.operators, this.file, [0, expression.length]);
         return tempTokenizer.readExpression();
     }
     /*

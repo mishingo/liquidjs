@@ -108,16 +108,16 @@ export class Tokenizer {
     const initial = this.readExpressionFromString(expression);
     this.assert(initial.valid(), `invalid value expression: ${this.snapshot()}`);
     const filters = this.readFilters();
-    
-    return new FilteredValueToken(initial, filters, this.input, begin, this.p, this.file);
-}
 
-readExpressionFromString(expression: string): Expression {
-    // Create a temporary tokenizer for the expression
+    return new FilteredValueToken(initial, filters, this.input, begin, this.p, this.file);
+  }
+
+  readExpressionFromString(expression: string): Expression {
+    // Pass the current tokenizer's options to the new Tokenizer instance
     //@ts-ignore
-    const tempTokenizer = new Tokenizer(expression, this.tokenizer.operators, this.file);
+    const tempTokenizer = new Tokenizer(expression, this.tokenizer.operators, this.file, [0, expression.length])
     return tempTokenizer.readExpression();
-}
+  }
   /*
   pretty good v2
   readFilteredValue(): FilteredValueToken {
