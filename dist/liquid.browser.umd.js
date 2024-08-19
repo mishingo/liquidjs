@@ -2411,11 +2411,15 @@
             // Check if the expression starts with ${ indicating a dynamic expression
             if (this.match('${')) {
                 this.p += 2; // skip "${"
-                var dynamicExpression = this.readExpression(); // Parse the expression inside ${}
-                // Validate the expression
-                this.assert(dynamicExpression.valid(), "invalid value expression: ".concat(this.snapshot()));
+                // Manually parse the identifier or expression inside ${}
+                var identifierToken = this.readIdentifier();
+                this.assert(identifierToken.size(), "invalid value expression: ".concat(this.snapshot()));
                 this.assert(this.peek() === '}', "expected \"}\" at the end of dynamic expression");
                 this.p++; // skip "}"
+                // Create a new Expression manually with the identifier token
+                var dynamicExpression = new Expression(tokenGenerator([identifierToken]));
+                // Validate the expression
+                this.assert(dynamicExpression.valid(), "invalid value expression: ".concat(this.snapshot()));
                 // Return the dynamic expression directly as a FilteredValueToken
                 return new FilteredValueToken(dynamicExpression, [], this.input, begin, this.p, this.file);
             }
@@ -2984,6 +2988,40 @@
         };
         return Tokenizer;
     }());
+    function tokenGenerator(tokens) {
+        var tokens_1, tokens_1_1, token, e_1_1;
+        var e_1, _a;
+        return __generator(this, function (_b) {
+            switch (_b.label) {
+                case 0:
+                    _b.trys.push([0, 5, 6, 7]);
+                    tokens_1 = __values(tokens), tokens_1_1 = tokens_1.next();
+                    _b.label = 1;
+                case 1:
+                    if (!!tokens_1_1.done) return [3 /*break*/, 4];
+                    token = tokens_1_1.value;
+                    return [4 /*yield*/, token];
+                case 2:
+                    _b.sent();
+                    _b.label = 3;
+                case 3:
+                    tokens_1_1 = tokens_1.next();
+                    return [3 /*break*/, 1];
+                case 4: return [3 /*break*/, 7];
+                case 5:
+                    e_1_1 = _b.sent();
+                    e_1 = { error: e_1_1 };
+                    return [3 /*break*/, 7];
+                case 6:
+                    try {
+                        if (tokens_1_1 && !tokens_1_1.done && (_a = tokens_1.return)) _a.call(tokens_1);
+                    }
+                    finally { if (e_1) throw e_1.error; }
+                    return [7 /*endfinally*/];
+                case 7: return [2 /*return*/];
+            }
+        });
+    }
 
     var ParseStream = /** @class */ (function () {
         function ParseStream(tokens, parseToken) {
