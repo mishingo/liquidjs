@@ -2431,7 +2431,7 @@ class Tokenizer {
     }
     match(word) {
         for (let i = 0; i < word.length; i++) {
-            console.log('word[i]', word[i]);
+            console.log(this.input[this.p + i]);
             if (word[i] !== this.input[this.p + i])
                 return false;
         }
