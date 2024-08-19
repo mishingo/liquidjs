@@ -1965,50 +1965,26 @@ class Tokenizer {
             return -1;
         return i;
     }
+    // v2
     readFilteredValue() {
         const begin = this.p;
         // Check if the expression starts with ${ indicating a dynamic expression
         if (this.match('${')) {
+            console.log('matched a ${}');
             this.p += 2; // skip "${"
-            // Manually parse the identifier or expression inside ${}
-            const identifierToken = this.readIdentifier();
-            this.assert(identifierToken.size(), `invalid value expression: ${this.snapshot()}`);
+            const dynamicExpression = this.readExpression(); // Parse the expression inside ${}
+            this.assert(dynamicExpression.valid(), `invalid value expression: ${this.snapshot()}`);
             this.assert(this.peek() === '}', `expected "}" at the end of dynamic expression`);
             this.p++; // skip "}"
-            // Create a new Expression manually with the identifier token
-            const dynamicExpression = new Expression(tokenGenerator([identifierToken]));
-            // Validate the expression
-            this.assert(dynamicExpression.valid(), `invalid value expression: ${this.snapshot()}`);
             // Return the dynamic expression directly as a FilteredValueToken
             return new FilteredValueToken(dynamicExpression, [], this.input, begin, this.p, this.file);
         }
+        console.log('reading expression');
         const initial = this.readExpression();
         this.assert(initial.valid(), `invalid value expression: ${this.snapshot()} : ${JSON.stringify(initial)}`);
         const filters = this.readFilters();
         return new FilteredValueToken(initial, filters, this.input, begin, this.p, this.file);
     }
-    /*
-    // v2
-    readFilteredValue(): FilteredValueToken {
-      const begin = this.p;
-      // Check if the expression starts with ${ indicating a dynamic expression
-      console.log(this)
-      if (this.match('${')) {
-        this.p += 2; // skip "${"
-        const dynamicExpression = this.readExpression(); // Parse the expression inside ${}
-       
-        this.assert(dynamicExpression.valid(), `invalid value expression: ${this.snapshot()}`);
-        this.assert(this.peek() === '}', `expected "}" at the end of dynamic expression`);
-        this.p++; // skip "}"
-        // Return the dynamic expression directly as a FilteredValueToken
-        return new FilteredValueToken(dynamicExpression, [], this.input, begin, this.p, this.file);
-      }
-      const initial = this.readExpression();
-      this.assert(initial.valid(), `invalid value expression: ${this.snapshot()} : ${JSON.stringify(initial)}`);
-      const filters = this.readFilters();
-      return new FilteredValueToken(initial, filters, this.input, begin, this.p, this.file);
-    }
-    */
     /*
     readFilteredValue (): FilteredValueToken {
       const begin = this.p;
@@ -2521,11 +2497,6 @@ class Tokenizer {
     skipBlank() {
         while (this.peekType() & BLANK)
             ++this.p;
-    }
-}
-function* tokenGenerator(tokens) {
-    for (const token of tokens) {
-        yield token;
     }
 }
 
