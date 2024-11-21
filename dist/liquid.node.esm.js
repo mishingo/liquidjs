@@ -4479,7 +4479,6 @@ class connectedContent extends Tag {
         }
     }
     *render(ctx) {
-        var _a, _b;
         const urlResult = yield this.value.value(ctx);
         const url = String(urlResult);
         if (!url) {
@@ -4537,53 +4536,42 @@ class connectedContent extends Tag {
             uri: url,
             cacheKey: url,
             cacheTTL,
-            timeout: 2000
+            timeout: 2000,
+            followRedirect: true,
+            followAllRedirects: true,
+            simple: false
         };
-        if (this.options.basic_auth) {
-            const secrets = ctx.environments['__secrets'];
-            if (!secrets) {
-                throw new Error('No secrets defined in context!');
-            }
-            const secret = secrets[this.options.basic_auth];
-            if (!secret) {
-                throw new Error(`No secret found for ${this.options.basic_auth}`);
-            }
-            if (!secret.username || !secret.password) {
-                throw new Error(`No username or password set for ${this.options.basic_auth}`);
-            }
-            rpOption['auth'] = {
-                user: secret.username,
-                pass: secret.password
-            };
-        }
-        let res;
         try {
-            res = (yield rp(rpOption));
-        }
-        catch (e) {
-            res = e;
-        }
-        // Store response in the specified variable (or 'connected' by default)
-        if (res.statusCode >= 200 && res.statusCode <= 299) {
-            try {
-                const jsonRes = JSON.parse(res.body);
-                jsonRes.__http_status_code__ = res.statusCode;
-                ctx.bottom()[this.options.save || 'connected'] = jsonRes;
-            }
-            catch (error) {
-                if ((_b = (_a = res.headers) === null || _a === void 0 ? void 0 : _a['content-type']) === null || _b === void 0 ? void 0 : _b.includes('json')) {
-                    console.error(`Failed to parse body as JSON: "${res.body}"`);
-                    ctx.bottom()[this.options.save || 'connected'] = { error: 'Failed to parse JSON response' };
+            const res = (yield rp(rpOption));
+            if (res.statusCode >= 200 && res.statusCode <= 299) {
+                try {
+                    if (this.options.content_type === 'application/json') {
+                        const jsonRes = JSON.parse(res.body);
+                        jsonRes.__http_status_code__ = res.statusCode;
+                        ctx.bottom()[this.options.save || 'connected'] = jsonRes;
+                    }
+                    else {
+                        ctx.bottom()[this.options.save || 'connected'] = res.body;
+                    }
                 }
-                else {
+                catch (parseError) {
+                    console.error('JSON Parse Error:', parseError);
                     ctx.bottom()[this.options.save || 'connected'] = res.body;
                 }
             }
+            else {
+                ctx.bottom()[this.options.save || 'connected'] = {
+                    status: res.statusCode,
+                    body: res.body
+                };
+            }
         }
-        else {
+        catch (error) {
+            const requestError = error;
+            console.error('Request Error:', requestError);
             ctx.bottom()[this.options.save || 'connected'] = {
-                error: `Request failed with status ${res.statusCode}`,
-                body: res.body
+                error: requestError.message || 'Request failed',
+                code: requestError.statusCode
             };
         }
     }

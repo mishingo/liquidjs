@@ -6003,14 +6003,13 @@
             return _this;
         }
         default_1.prototype.render = function (ctx) {
-            var urlResult, url, method, cacheTTL, cache, contentType, headers, _a, _b, key, headerValue, e_1_1, body, jsonBody, _c, _d, element, _e, key, value, renderedValue, e_2_1, renderedBody, rpOption, secrets, secret, res, e_3, jsonRes;
+            var urlResult, url, method, cacheTTL, cache, contentType, headers, _a, _b, key, headerValue, e_1_1, body, jsonBody, _c, _d, element, _e, key, value, renderedValue, e_2_1, renderedBody, rpOption, res, jsonRes, error_1, requestError;
             var e_1, _f, e_2, _g;
-            var _h, _j;
-            return __generator(this, function (_k) {
-                switch (_k.label) {
+            return __generator(this, function (_h) {
+                switch (_h.label) {
                     case 0: return [4 /*yield*/, this.value.value(ctx)];
                     case 1:
-                        urlResult = _k.sent();
+                        urlResult = _h.sent();
                         url = String(urlResult);
                         if (!url) {
                             throw new Error("Invalid URL: ".concat(url));
@@ -6038,25 +6037,25 @@
                             'Accept': this.options.content_type
                         };
                         if (!this.options.headers) return [3 /*break*/, 9];
-                        _k.label = 2;
+                        _h.label = 2;
                     case 2:
-                        _k.trys.push([2, 7, 8, 9]);
+                        _h.trys.push([2, 7, 8, 9]);
                         _a = __values(Object.keys(this.options.headers)), _b = _a.next();
-                        _k.label = 3;
+                        _h.label = 3;
                     case 3:
                         if (!!_b.done) return [3 /*break*/, 6];
                         key = _b.value;
                         return [4 /*yield*/, this.liquid.parseAndRender(this.options.headers[key], ctx.getAll())];
                     case 4:
-                        headerValue = _k.sent();
+                        headerValue = _h.sent();
                         headers[key] = String(headerValue);
-                        _k.label = 5;
+                        _h.label = 5;
                     case 5:
                         _b = _a.next();
                         return [3 /*break*/, 3];
                     case 6: return [3 /*break*/, 9];
                     case 7:
-                        e_1_1 = _k.sent();
+                        e_1_1 = _h.sent();
                         e_1 = { error: e_1_1 };
                         return [3 /*break*/, 9];
                     case 8:
@@ -6070,26 +6069,26 @@
                         if (!body) return [3 /*break*/, 20];
                         if (!(method === 'POST' && (contentType === null || contentType === void 0 ? void 0 : contentType.toLowerCase().includes('application/json')))) return [3 /*break*/, 18];
                         jsonBody = {};
-                        _k.label = 10;
+                        _h.label = 10;
                     case 10:
-                        _k.trys.push([10, 15, 16, 17]);
+                        _h.trys.push([10, 15, 16, 17]);
                         _c = __values(body.split('&')), _d = _c.next();
-                        _k.label = 11;
+                        _h.label = 11;
                     case 11:
                         if (!!_d.done) return [3 /*break*/, 14];
                         element = _d.value;
                         _e = __read(element.split('='), 2), key = _e[0], value = _e[1];
                         return [4 /*yield*/, this.liquid.parseAndRender(value, ctx.getAll())];
                     case 12:
-                        renderedValue = _k.sent();
+                        renderedValue = _h.sent();
                         jsonBody[key] = String(renderedValue).replace(/(?:\r\n|\r|\n)/g, '');
-                        _k.label = 13;
+                        _h.label = 13;
                     case 13:
                         _d = _c.next();
                         return [3 /*break*/, 11];
                     case 14: return [3 /*break*/, 17];
                     case 15:
-                        e_2_1 = _k.sent();
+                        e_2_1 = _h.sent();
                         e_2 = { error: e_2_1 };
                         return [3 /*break*/, 17];
                     case 16:
@@ -6103,9 +6102,9 @@
                         return [3 /*break*/, 20];
                     case 18: return [4 /*yield*/, this.liquid.parseAndRender(body, ctx.getAll())];
                     case 19:
-                        renderedBody = _k.sent();
+                        renderedBody = _h.sent();
                         body = String(renderedBody);
-                        _k.label = 20;
+                        _h.label = 20;
                     case 20:
                         rpOption = {
                             'resolveWithFullResponse': true,
@@ -6115,61 +6114,50 @@
                             uri: url,
                             cacheKey: url,
                             cacheTTL: cacheTTL,
-                            timeout: 2000
+                            timeout: 2000,
+                            followRedirect: true,
+                            followAllRedirects: true,
+                            simple: false
                         };
-                        if (this.options.basic_auth) {
-                            secrets = ctx.environments['__secrets'];
-                            if (!secrets) {
-                                throw new Error('No secrets defined in context!');
-                            }
-                            secret = secrets[this.options.basic_auth];
-                            if (!secret) {
-                                throw new Error("No secret found for ".concat(this.options.basic_auth));
-                            }
-                            if (!secret.username || !secret.password) {
-                                throw new Error("No username or password set for ".concat(this.options.basic_auth));
-                            }
-                            rpOption['auth'] = {
-                                user: secret.username,
-                                pass: secret.password
-                            };
-                        }
-                        _k.label = 21;
+                        _h.label = 21;
                     case 21:
-                        _k.trys.push([21, 23, , 24]);
+                        _h.trys.push([21, 23, , 24]);
                         return [4 /*yield*/, rp(rpOption)];
                     case 22:
-                        res = (_k.sent());
-                        return [3 /*break*/, 24];
-                    case 23:
-                        e_3 = _k.sent();
-                        res = e_3;
-                        return [3 /*break*/, 24];
-                    case 24:
-                        // Store response in the specified variable (or 'connected' by default)
+                        res = (_h.sent());
                         if (res.statusCode >= 200 && res.statusCode <= 299) {
                             try {
-                                jsonRes = JSON.parse(res.body);
-                                jsonRes.__http_status_code__ = res.statusCode;
-                                ctx.bottom()[this.options.save || 'connected'] = jsonRes;
-                            }
-                            catch (error) {
-                                if ((_j = (_h = res.headers) === null || _h === void 0 ? void 0 : _h['content-type']) === null || _j === void 0 ? void 0 : _j.includes('json')) {
-                                    console.error("Failed to parse body as JSON: \"".concat(res.body, "\""));
-                                    ctx.bottom()[this.options.save || 'connected'] = { error: 'Failed to parse JSON response' };
+                                if (this.options.content_type === 'application/json') {
+                                    jsonRes = JSON.parse(res.body);
+                                    jsonRes.__http_status_code__ = res.statusCode;
+                                    ctx.bottom()[this.options.save || 'connected'] = jsonRes;
                                 }
                                 else {
                                     ctx.bottom()[this.options.save || 'connected'] = res.body;
                                 }
                             }
+                            catch (parseError) {
+                                console.error('JSON Parse Error:', parseError);
+                                ctx.bottom()[this.options.save || 'connected'] = res.body;
+                            }
                         }
                         else {
                             ctx.bottom()[this.options.save || 'connected'] = {
-                                error: "Request failed with status ".concat(res.statusCode),
+                                status: res.statusCode,
                                 body: res.body
                             };
                         }
-                        return [2 /*return*/];
+                        return [3 /*break*/, 24];
+                    case 23:
+                        error_1 = _h.sent();
+                        requestError = error_1;
+                        console.error('Request Error:', requestError);
+                        ctx.bottom()[this.options.save || 'connected'] = {
+                            error: requestError.message || 'Request failed',
+                            code: requestError.statusCode
+                        };
+                        return [3 /*break*/, 24];
+                    case 24: return [2 /*return*/];
                 }
             });
         };
