@@ -5983,7 +5983,6 @@
                 throw new Error("missing URL in ".concat(token.getText()));
             }
             _this.value = new Value(valueName, _this.liquid);
-            // Parse remaining options
             _this.tokenizer.skipBlank();
             var remaining = _this.tokenizer.remaining();
             if (remaining) {
@@ -6149,20 +6148,22 @@
                                 jsonRes = JSON.parse(res.body);
                                 jsonRes.__http_status_code__ = res.statusCode;
                                 ctx.environments[this.options.save || 'connected'] = jsonRes;
-                                return [2 /*return*/];
                             }
                             catch (error) {
                                 if ((_j = (_h = res.headers) === null || _h === void 0 ? void 0 : _h['content-type']) === null || _j === void 0 ? void 0 : _j.includes('json')) {
                                     console.error("Failed to parse body as JSON: \"".concat(res.body, "\""));
+                                    // Don't return anything when JSON parsing fails
                                 }
                                 else {
-                                    return [2 /*return*/, res.body];
+                                    // Store the raw response in the context but don't return it
+                                    ctx.environments[this.options.save || 'connected'] = res.body;
                                 }
                             }
                         }
                         else {
                             console.error("".concat(url, " responded with ").concat(res.statusCode, ":\n").concat(res.body));
                         }
+                        // Return nothing to avoid rendering response in the page
                         return [2 /*return*/];
                 }
             });

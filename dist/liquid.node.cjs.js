@@ -4445,7 +4445,6 @@ class connectedContent extends Tag {
             throw new Error(`missing URL in ${token.getText()}`);
         }
         this.value = new Value(valueName, this.liquid);
-        // Parse remaining options
         this.tokenizer.skipBlank();
         const remaining = this.tokenizer.remaining();
         if (remaining) {
@@ -4550,20 +4549,23 @@ class connectedContent extends Tag {
                 const jsonRes = JSON.parse(res.body);
                 jsonRes.__http_status_code__ = res.statusCode;
                 ctx.environments[this.options.save || 'connected'] = jsonRes;
-                return;
             }
             catch (error) {
                 if (res.headers?.['content-type']?.includes('json')) {
                     console.error(`Failed to parse body as JSON: "${res.body}"`);
+                    // Don't return anything when JSON parsing fails
                 }
                 else {
-                    return res.body;
+                    // Store the raw response in the context but don't return it
+                    ctx.environments[this.options.save || 'connected'] = res.body;
                 }
             }
         }
         else {
             console.error(`${url} responded with ${res.statusCode}:\n${res.body}`);
         }
+        // Return nothing to avoid rendering response in the page
+        return;
     }
 }
 

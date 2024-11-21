@@ -4453,7 +4453,6 @@ class connectedContent extends Tag {
             throw new Error(`missing URL in ${token.getText()}`);
         }
         this.value = new Value(valueName, this.liquid);
-        // Parse remaining options
         this.tokenizer.skipBlank();
         const remaining = this.tokenizer.remaining();
         if (remaining) {
@@ -4559,20 +4558,23 @@ class connectedContent extends Tag {
                 const jsonRes = JSON.parse(res.body);
                 jsonRes.__http_status_code__ = res.statusCode;
                 ctx.environments[this.options.save || 'connected'] = jsonRes;
-                return;
             }
             catch (error) {
                 if ((_b = (_a = res.headers) === null || _a === void 0 ? void 0 : _a['content-type']) === null || _b === void 0 ? void 0 : _b.includes('json')) {
                     console.error(`Failed to parse body as JSON: "${res.body}"`);
+                    // Don't return anything when JSON parsing fails
                 }
                 else {
-                    return res.body;
+                    // Store the raw response in the context but don't return it
+                    ctx.environments[this.options.save || 'connected'] = res.body;
                 }
             }
         }
         else {
             console.error(`${url} responded with ${res.statusCode}:\n${res.body}`);
         }
+        // Return nothing to avoid rendering response in the page
+        return;
     }
 }
 

@@ -3,5 +3,5 @@ export default class extends Tag {
     private value;
     private options;
     constructor(token: TagToken, remainTokens: TopLevelToken[], liquid: Liquid);
-    render(ctx: Context): Generator<unknown, void | string, unknown>;
+    render(ctx: Context): Generator<unknown, void, unknown>;
 }
