@@ -128,6 +128,22 @@
         return to.concat(ar || Array.prototype.slice.call(from));
     }
 
+    function __await(v) {
+        return this instanceof __await ? (this.v = v, this) : new __await(v);
+    }
+
+    function __asyncGenerator(thisArg, _arguments, generator) {
+        if (!Symbol.asyncIterator) throw new TypeError("Symbol.asyncIterator is not defined.");
+        var g = generator.apply(thisArg, _arguments || []), i, q = [];
+        return i = {}, verb("next"), verb("throw"), verb("return"), i[Symbol.asyncIterator] = function () { return this; }, i;
+        function verb(n) { if (g[n]) i[n] = function (v) { return new Promise(function (a, b) { q.push([n, v, a, b]) > 1 || resume(n, v); }); }; }
+        function resume(n, v) { try { step(g[n](v)); } catch (e) { settle(q[0][3], e); } }
+        function step(r) { r.value instanceof __await ? Promise.resolve(r.value.v).then(fulfill, reject) : settle(q[0][2], r); }
+        function fulfill(value) { resume("next", value); }
+        function reject(value) { resume("throw", value); }
+        function settle(f, v) { if (f(v), q.shift(), q.length) resume(q[0][0], q[0][1]); }
+    }
+
     var Token = /** @class */ (function () {
         function Token(kind, input, begin, end, file) {
             this.kind = kind;
@@ -3461,7 +3477,7 @@
             this.parseLimit = new Limiter('parse length', liquid.options.parseLimit);
         }
         Parser.prototype.parse = function (html, filepath) {
-            console.log(html.match(/(?<!\{\{content_blocks\.)\$\{([^}]+)\}/g));
+            //console.log(html.match(/(?<!\{\{content_blocks\.)\$\{([^}]+)\}/g))
             html = String(html.replace(/(?<!\{\{content_blocks\.)\$\{([^}]+)\}/g, '$1'));
             this.parseLimit.use(html.length);
             var tokenizer = new Tokenizer(html, this.liquid.options.operators, filepath);
@@ -5972,50 +5988,46 @@
     var brazeFilters = __assign(__assign(__assign(__assign(__assign({}, hash), json$1), url), encoding), number);
 
     var rp = rp_;
-    var re = new RegExp("(https?(?:[^\\s]+|\\{\\{.*?\\}\\})+)(\\s+(\\s|.)*)?$");
     var headerRegex = new RegExp(":headers\\s+(\\{(.|\\s)*?[^\\}]\\}([^\\}]|$))");
-    // supported options: :basic_auth, :content_type, :save, :cache, :method, :body, :headers
-    var connectedContent = {
-        parse: function (tagToken) {
-            var _this = this;
-            var match = tagToken.args.match(re);
-            if (!match) {
-                //@ts-ignore
-                throw new Error("illegal token ".concat(tagToken.raw));
-            }
-            this.url = match[1];
-            var options = match[2];
-            this.options = {};
-            if (options) {
-                // first extract the headers option if it exists, because the headers JSON will contain a /\s+:/
-                var headersMatch = options.match(headerRegex);
+    var default_1$m = /** @class */ (function (_super) {
+        __extends(default_1, _super);
+        function default_1(token, remainTokens, liquid) {
+            var _this = _super.call(this, token, remainTokens, liquid) || this;
+            _this.options = {};
+            var filteredValue = _this.tokenizer.readFilteredValue();
+            _this.value = new Value(filteredValue, _this.liquid);
+            // Get any remaining content after the URL for options
+            var remainingContent = _this.tokenizer.remaining();
+            if (remainingContent) {
+                var headersMatch = remainingContent.match(headerRegex);
                 if (headersMatch != null) {
-                    this.options.headers = JSON.parse(headersMatch[1]);
+                    _this.options.headers = JSON.parse(headersMatch[1]);
                 }
-                // then replace the headers option if it exists, and proceed as normal for the other options
-                options.replace(headerRegex, '').split(/\s+:/).forEach(function (optStr) {
+                remainingContent.replace(headerRegex, '').split(/\s+:/).forEach(function (optStr) {
                     if (optStr === '')
                         return;
                     var opts = optStr.split(/\s+/);
-                    if (opts[0] === 'headers') {
-                        console.error('Headers JSON malformed. Check your headers value');
-                    }
                     _this.options[opts[0]] = opts.length > 1 ? opts[1] : true;
                 });
             }
-        },
-        render: function (ctx) {
-            return __awaiter(this, void 0, void 0, function () {
-                var renderedUrl, method, cacheTTL, cache, contentType, headers, _a, _b, key, _c, _d, e_1_1, body, jsonBody, _e, _f, element, bodyElementSplit, _g, _h, e_2_1, rpOption, secrets, secret, res, e_3, jsonRes;
-                var e_1, _j, e_2, _k;
-                return __generator(this, function (_l) {
-                    switch (_l.label) {
-                        case 0: return [4 /*yield*/, this.liquid.parseAndRender(this.url, ctx.getAll())];
+            return _this;
+        }
+        default_1.prototype.render = function (ctx) {
+            var _a;
+            return __asyncGenerator(this, arguments, function render_1() {
+                var urlValue, url, method, cacheTTL, cache, contentType, headers, _b, _c, key, headerValue, e_1_1, body, jsonBody, _d, _e, element, _f, key, value, renderedValue, e_2_1, renderedBody, rpOption, secrets, secret, res, e_3, jsonRes, error_1;
+                var e_1, _g, e_2, _h;
+                return __generator(this, function (_j) {
+                    switch (_j.label) {
+                        case 0: return [4 /*yield*/, __await(this.value.value(ctx))];
                         case 1:
-                            renderedUrl = _l.sent();
+                            urlValue = _j.sent();
+                            url = String(urlValue);
+                            if (!url) {
+                                throw new Error("Invalid URL: ".concat(url));
+                            }
                             method = (this.options.method || 'GET').toUpperCase();
-                            cacheTTL = 300 * 1000 // default 5 mins
-                            ;
+                            cacheTTL = 300 * 1000;
                             if (method !== 'GET') {
                                 cacheTTL = 0;
                             }
@@ -6025,97 +6037,94 @@
                                     cacheTTL = cache * 1000;
                                 }
                                 else if (cache === 0) {
-                                    // This is a hack, nano-cache will not expire cache when ttl = 0
                                     cacheTTL = 1;
                                 }
                             }
-                            contentType = this.options.content_type;
-                            if (method === 'POST') {
-                                contentType = this.options.content_type || 'application/x-www-form-urlencoded';
-                            }
+                            contentType = method === 'POST'
+                                ? (this.options.content_type || 'application/x-www-form-urlencoded')
+                                : this.options.content_type;
                             headers = {
                                 'User-Agent': 'brazejs-client',
                                 'Content-Type': contentType,
                                 'Accept': this.options.content_type
                             };
                             if (!this.options.headers) return [3 /*break*/, 9];
-                            _l.label = 2;
+                            _j.label = 2;
                         case 2:
-                            _l.trys.push([2, 7, 8, 9]);
-                            _a = __values(Object.keys(this.options.headers)), _b = _a.next();
-                            _l.label = 3;
+                            _j.trys.push([2, 7, 8, 9]);
+                            _b = __values(Object.keys(this.options.headers)), _c = _b.next();
+                            _j.label = 3;
                         case 3:
-                            if (!!_b.done) return [3 /*break*/, 6];
-                            key = _b.value;
-                            _c = headers;
-                            _d = key;
-                            return [4 /*yield*/, this.liquid.parseAndRender(this.options.headers[key], ctx.getAll())];
+                            if (!!_c.done) return [3 /*break*/, 6];
+                            key = _c.value;
+                            return [4 /*yield*/, __await(this.liquid.parseAndRender(this.options.headers[key], ctx.getAll()))];
                         case 4:
-                            _c[_d] = _l.sent();
-                            _l.label = 5;
+                            headerValue = _j.sent();
+                            headers[key] = String(headerValue);
+                            _j.label = 5;
                         case 5:
-                            _b = _a.next();
+                            _c = _b.next();
                             return [3 /*break*/, 3];
                         case 6: return [3 /*break*/, 9];
                         case 7:
-                            e_1_1 = _l.sent();
+                            e_1_1 = _j.sent();
                             e_1 = { error: e_1_1 };
                             return [3 /*break*/, 9];
                         case 8:
                             try {
-                                if (_b && !_b.done && (_j = _a.return)) _j.call(_a);
+                                if (_c && !_c.done && (_g = _b.return)) _g.call(_b);
                             }
                             finally { if (e_1) throw e_1.error; }
                             return [7 /*endfinally*/];
                         case 9:
                             body = this.options.body;
-                            if (!this.options.body) return [3 /*break*/, 20];
-                            if (!(method.toUpperCase() === 'POST' && contentType.toLowerCase().includes('application/json'))) return [3 /*break*/, 18];
+                            if (!body) return [3 /*break*/, 20];
+                            if (!(method === 'POST' && (contentType === null || contentType === void 0 ? void 0 : contentType.toLowerCase().includes('application/json')))) return [3 /*break*/, 18];
                             jsonBody = {};
-                            _l.label = 10;
+                            _j.label = 10;
                         case 10:
-                            _l.trys.push([10, 15, 16, 17]);
-                            _e = __values(this.options.body.split('&')), _f = _e.next();
-                            _l.label = 11;
+                            _j.trys.push([10, 15, 16, 17]);
+                            _d = __values(body.split('&')), _e = _d.next();
+                            _j.label = 11;
                         case 11:
-                            if (!!_f.done) return [3 /*break*/, 14];
-                            element = _f.value;
-                            bodyElementSplit = element.split('=');
-                            _g = jsonBody;
-                            _h = bodyElementSplit[0];
-                            return [4 /*yield*/, this.liquid.parseAndRender(bodyElementSplit[1], ctx.getAll())];
+                            if (!!_e.done) return [3 /*break*/, 14];
+                            element = _e.value;
+                            _f = __read(element.split('='), 2), key = _f[0], value = _f[1];
+                            return [4 /*yield*/, __await(this.liquid.parseAndRender(value, ctx.getAll()))];
                         case 12:
-                            _g[_h] = (_l.sent()).replace(/(?:\r\n|\r|\n|)/g, '');
-                            _l.label = 13;
+                            renderedValue = _j.sent();
+                            jsonBody[key] = String(renderedValue).replace(/(?:\r\n|\r|\n)/g, '');
+                            _j.label = 13;
                         case 13:
-                            _f = _e.next();
+                            _e = _d.next();
                             return [3 /*break*/, 11];
                         case 14: return [3 /*break*/, 17];
                         case 15:
-                            e_2_1 = _l.sent();
+                            e_2_1 = _j.sent();
                             e_2 = { error: e_2_1 };
                             return [3 /*break*/, 17];
                         case 16:
                             try {
-                                if (_f && !_f.done && (_k = _e.return)) _k.call(_e);
+                                if (_e && !_e.done && (_h = _d.return)) _h.call(_d);
                             }
                             finally { if (e_2) throw e_2.error; }
                             return [7 /*endfinally*/];
                         case 17:
                             body = JSON.stringify(jsonBody);
                             return [3 /*break*/, 20];
-                        case 18: return [4 /*yield*/, this.liquid.parseAndRender(this.options.body, ctx.getAll())];
+                        case 18: return [4 /*yield*/, __await(this.liquid.parseAndRender(body, ctx.getAll()))];
                         case 19:
-                            body = _l.sent();
-                            _l.label = 20;
+                            renderedBody = _j.sent();
+                            body = String(renderedBody);
+                            _j.label = 20;
                         case 20:
                             rpOption = {
                                 'resolveWithFullResponse': true,
                                 method: method,
                                 headers: headers,
                                 body: body,
-                                uri: renderedUrl,
-                                cacheKey: renderedUrl,
+                                uri: url,
+                                cacheKey: url,
                                 cacheTTL: cacheTTL,
                                 timeout: 2000
                             };
@@ -6136,43 +6145,46 @@
                                     pass: secret.password
                                 };
                             }
-                            _l.label = 21;
+                            _j.label = 21;
                         case 21:
-                            _l.trys.push([21, 23, , 24]);
-                            return [4 /*yield*/, rp(rpOption)];
+                            _j.trys.push([21, 23, , 24]);
+                            return [4 /*yield*/, __await(rp(rpOption))];
                         case 22:
-                            res = _l.sent();
+                            res = _j.sent();
                             return [3 /*break*/, 24];
                         case 23:
-                            e_3 = _l.sent();
+                            e_3 = _j.sent();
                             res = e_3;
                             return [3 /*break*/, 24];
                         case 24:
-                            if (res.statusCode >= 200 && res.statusCode <= 299) {
-                                try {
-                                    jsonRes = JSON.parse(res.body);
-                                    jsonRes.__http_status_code__ = res.statusCode;
-                                    ctx.environments[this.options.save || 'connected'] = jsonRes;
-                                }
-                                catch (error) {
-                                    if (res.headers['content-type'] !== undefined && res.headers['content-type'].includes('json')) {
-                                        console.error("Failed to parse body as JSON: \"".concat(res.body, "\""));
-                                    }
-                                    else {
-                                        return [2 /*return*/, res.body];
-                                    }
-                                }
-                            }
-                            else {
-                                console.error("".concat(renderedUrl, " responded with ").concat(res.statusCode, ":\n") +
-                                    "".concat(res.body));
-                            }
-                            return [2 /*return*/];
+                            if (!(res.statusCode >= 200 && res.statusCode <= 299)) return [3 /*break*/, 32];
+                            _j.label = 25;
+                        case 25:
+                            _j.trys.push([25, 27, , 31]);
+                            jsonRes = JSON.parse(res.body);
+                            jsonRes.__http_status_code__ = res.statusCode;
+                            ctx.environments[this.options.save || 'connected'] = jsonRes;
+                            return [4 /*yield*/, __await(void 0)];
+                        case 26: return [2 /*return*/, _j.sent()];
+                        case 27:
+                            error_1 = _j.sent();
+                            if (!((_a = res.headers['content-type']) === null || _a === void 0 ? void 0 : _a.includes('json'))) return [3 /*break*/, 28];
+                            console.error("Failed to parse body as JSON: \"".concat(res.body, "\""));
+                            return [3 /*break*/, 30];
+                        case 28: return [4 /*yield*/, __await(res.body)];
+                        case 29: return [2 /*return*/, _j.sent()];
+                        case 30: return [3 /*break*/, 31];
+                        case 31: return [3 /*break*/, 33];
+                        case 32:
+                            console.error("".concat(url, " responded with ").concat(res.statusCode, ":\n").concat(res.body));
+                            _j.label = 33;
+                        case 33: return [2 /*return*/];
                     }
                 });
             });
-        }
-    };
+        };
+        return default_1;
+    }(Tag));
 
     var AbortError = /** @class */ (function (_super) {
         __extends(AbortError, _super);
@@ -6185,10 +6197,10 @@
         return AbortError;
     }(Error));
 
-    var re$1 = new RegExp("\\(('([^']*)'|\"([^\"]*)\")?\\)");
+    var re = new RegExp("\\(('([^']*)'|\"([^\"]*)\")?\\)");
     var abortMessage = {
         parse: function (tagToken) {
-            var match = tagToken.args.match(re$1);
+            var match = tagToken.args.match(re);
             if (!match) {
                 //@ts-ignore
                 throw new Error("illegal token ".concat(tagToken.raw));
@@ -6205,7 +6217,7 @@
     };
 
     var tags$1 = {
-        'connected_content': connectedContent,
+        'connected_content': default_1$m,
         'abort_message': abortMessage,
         //'content_blocks': ContentBlockTag
     };

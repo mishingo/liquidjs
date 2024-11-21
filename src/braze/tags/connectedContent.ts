@@ -29,10 +29,11 @@ export default class extends Tag {
     }
   }
 
-  * render (ctx: Context) {
-    const url = yield this.value.value(ctx)
+  async * render (ctx: Context): AsyncGenerator<unknown, void | string, unknown> {
+    const urlValue = await this.value.value(ctx)
+    const url = String(urlValue)
     
-    if (!url || typeof url !== 'string') {
+    if (!url) {
       throw new Error(`Invalid URL: ${url}`)
     }
 
@@ -61,21 +62,24 @@ export default class extends Tag {
 
     if (this.options.headers) {
       for (const key of Object.keys(this.options.headers)) {
-        headers[key] = yield this.liquid.parseAndRender(this.options.headers[key], ctx.getAll())
+        const headerValue = await this.liquid.parseAndRender(this.options.headers[key], ctx.getAll())
+        headers[key] = String(headerValue)
       }
     }
 
     let body = this.options.body
     if (body) {
       if (method === 'POST' && contentType?.toLowerCase().includes('application/json')) {
-        const jsonBody = {}
+        const jsonBody: Record<string, string> = {}
         for (const element of body.split('&')) {
           const [key, value] = element.split('=')
-          jsonBody[key] = (yield this.liquid.parseAndRender(value, ctx.getAll())).replace(/(?:\r\n|\r|\n)/g, '')
+          const renderedValue = await this.liquid.parseAndRender(value, ctx.getAll())
+          jsonBody[key] = String(renderedValue).replace(/(?:\r\n|\r|\n)/g, '')
         }
         body = JSON.stringify(jsonBody)
       } else {
-        body = yield this.liquid.parseAndRender(body, ctx.getAll())
+        const renderedBody = await this.liquid.parseAndRender(body, ctx.getAll())
+        body = String(renderedBody)
       }
     }
 
@@ -110,7 +114,7 @@ export default class extends Tag {
 
     let res
     try {
-      res = yield rp(rpOption)
+      res = await rp(rpOption)
     } catch (e) {
       res = e
     }
