@@ -5972,7 +5972,7 @@
     var brazeFilters = __assign(__assign(__assign(__assign(__assign({}, hash), json$1), url), encoding), number);
 
     var rp = rp_;
-    var re = new RegExp("(https?(?:[^\\s\\{\\}]+|\\{\\{.*?\\}\\})+)(\\s+(\\s|.)*)?$");
+    var re = new RegExp("(https?(?:[^\\s]+|\\{\\{.*?\\}\\})+)(\\s+(\\s|.)*)?$");
     var headerRegex = new RegExp(":headers\\s+(\\{(.|\\s)*?[^\\}]\\}([^\\}]|$))");
     // supported options: :basic_auth, :content_type, :save, :cache, :method, :body, :headers
     var connectedContent = {

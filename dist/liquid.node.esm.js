@@ -4450,7 +4450,7 @@ var number = {
 var brazeFilters = Object.assign(Object.assign(Object.assign(Object.assign(Object.assign({}, hash), json$1), url), encoding), number);
 
 const rp = rp_;
-const re = new RegExp(`(https?(?:[^\\s\\{\\}]+|\\{\\{.*?\\}\\})+)(\\s+(\\s|.)*)?$`);
+const re = new RegExp(`(https?(?:[^\\s]+|\\{\\{.*?\\}\\})+)(\\s+(\\s|.)*)?$`);
 const headerRegex = new RegExp(`:headers\\s+(\\{(.|\\s)*?[^\\}]\\}([^\\}]|$))`);
 // supported options: :basic_auth, :content_type, :save, :cache, :method, :body, :headers
 var connectedContent = {
