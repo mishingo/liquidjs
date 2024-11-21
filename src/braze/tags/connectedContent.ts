@@ -133,24 +133,25 @@ export default class extends Tag {
       res = e as RequestResponse
     }
 
+    // Store response in the specified variable (or 'connected' by default)
     if (res.statusCode >= 200 && res.statusCode <= 299) {
       try {
         const jsonRes = JSON.parse(res.body)
         jsonRes.__http_status_code__ = res.statusCode
-        ctx.environments[this.options.save || 'connected'] = jsonRes
+        ctx.bottom()[this.options.save || 'connected'] = jsonRes
       } catch (error) {
         if (res.headers?.['content-type']?.includes('json')) {
           console.error(`Failed to parse body as JSON: "${res.body}"`)
-          // Don't return anything when JSON parsing fails
+          ctx.bottom()[this.options.save || 'connected'] = { error: 'Failed to parse JSON response' }
         } else {
-          // Store the raw response in the context but don't return it
-          ctx.environments[this.options.save || 'connected'] = res.body
+          ctx.bottom()[this.options.save || 'connected'] = res.body
         }
       }
     } else {
-      console.error(`${url} responded with ${res.statusCode}:\n${res.body}`)
+      ctx.bottom()[this.options.save || 'connected'] = {
+        error: `Request failed with status ${res.statusCode}`,
+        body: res.body
+      }
     }
-    // Return nothing to avoid rendering response in the page
-    return
   }
 }

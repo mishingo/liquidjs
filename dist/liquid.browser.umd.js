@@ -6143,27 +6143,29 @@
                         res = e_3;
                         return [3 /*break*/, 24];
                     case 24:
+                        // Store response in the specified variable (or 'connected' by default)
                         if (res.statusCode >= 200 && res.statusCode <= 299) {
                             try {
                                 jsonRes = JSON.parse(res.body);
                                 jsonRes.__http_status_code__ = res.statusCode;
-                                ctx.environments[this.options.save || 'connected'] = jsonRes;
+                                ctx.bottom()[this.options.save || 'connected'] = jsonRes;
                             }
                             catch (error) {
                                 if ((_j = (_h = res.headers) === null || _h === void 0 ? void 0 : _h['content-type']) === null || _j === void 0 ? void 0 : _j.includes('json')) {
                                     console.error("Failed to parse body as JSON: \"".concat(res.body, "\""));
-                                    // Don't return anything when JSON parsing fails
+                                    ctx.bottom()[this.options.save || 'connected'] = { error: 'Failed to parse JSON response' };
                                 }
                                 else {
-                                    // Store the raw response in the context but don't return it
-                                    ctx.environments[this.options.save || 'connected'] = res.body;
+                                    ctx.bottom()[this.options.save || 'connected'] = res.body;
                                 }
                             }
                         }
                         else {
-                            console.error("".concat(url, " responded with ").concat(res.statusCode, ":\n").concat(res.body));
+                            ctx.bottom()[this.options.save || 'connected'] = {
+                                error: "Request failed with status ".concat(res.statusCode),
+                                body: res.body
+                            };
                         }
-                        // Return nothing to avoid rendering response in the page
                         return [2 /*return*/];
                 }
             });
