@@ -5994,16 +5994,23 @@
         function default_1(token, remainTokens, liquid) {
             var _this = _super.call(this, token, remainTokens, liquid) || this;
             _this.options = {};
-            var filteredValue = _this.tokenizer.readFilteredValue();
-            _this.value = new Value(filteredValue, _this.liquid);
-            // Get any remaining content after the URL for options
-            var remainingContent = _this.tokenizer.remaining();
-            if (remainingContent) {
-                var headersMatch = remainingContent.match(headerRegex);
+            // Get all the arguments as a string and trim whitespace
+            var args = token.args.trim();
+            // For debugging
+            console.log('Token args:', args);
+            // Create a Value object directly from the args
+            _this.value = new Value(args, _this.liquid);
+            // Skip past the URL part
+            _this.tokenizer.skipBlank();
+            // Parse remaining options if they exist
+            var optionsMatch = args.match(/\s+:(.+)$/);
+            if (optionsMatch) {
+                var optionsStr = optionsMatch[1];
+                var headersMatch = optionsStr.match(headerRegex);
                 if (headersMatch != null) {
                     _this.options.headers = JSON.parse(headersMatch[1]);
                 }
-                remainingContent.replace(headerRegex, '').split(/\s+:/).forEach(function (optStr) {
+                optionsStr.replace(headerRegex, '').split(/\s+:/).forEach(function (optStr) {
                     if (optStr === '')
                         return;
                     var opts = optStr.split(/\s+/);
@@ -6019,10 +6026,14 @@
                 var e_1, _g, e_2, _h;
                 return __generator(this, function (_j) {
                     switch (_j.label) {
-                        case 0: return [4 /*yield*/, __await(this.value.value(ctx))];
+                        case 0:
+                            // For debugging
+                            console.log('Evaluating value:', this.value);
+                            return [4 /*yield*/, __await(this.value.value(ctx))];
                         case 1:
                             urlValue = _j.sent();
                             url = String(urlValue);
+                            console.log('Resolved URL:', url);
                             if (!url) {
                                 throw new Error("Invalid URL: ".concat(url));
                             }

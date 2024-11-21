@@ -4440,16 +4440,23 @@ class connectedContent extends Tag {
     constructor(token, remainTokens, liquid) {
         super(token, remainTokens, liquid);
         this.options = {};
-        const filteredValue = this.tokenizer.readFilteredValue();
-        this.value = new Value(filteredValue, this.liquid);
-        // Get any remaining content after the URL for options
-        const remainingContent = this.tokenizer.remaining();
-        if (remainingContent) {
-            const headersMatch = remainingContent.match(headerRegex);
+        // Get all the arguments as a string and trim whitespace
+        const args = token.args.trim();
+        // For debugging
+        console.log('Token args:', args);
+        // Create a Value object directly from the args
+        this.value = new Value(args, this.liquid);
+        // Skip past the URL part
+        this.tokenizer.skipBlank();
+        // Parse remaining options if they exist
+        const optionsMatch = args.match(/\s+:(.+)$/);
+        if (optionsMatch) {
+            const optionsStr = optionsMatch[1];
+            const headersMatch = optionsStr.match(headerRegex);
             if (headersMatch != null) {
                 this.options.headers = JSON.parse(headersMatch[1]);
             }
-            remainingContent.replace(headerRegex, '').split(/\s+:/).forEach((optStr) => {
+            optionsStr.replace(headerRegex, '').split(/\s+:/).forEach((optStr) => {
                 if (optStr === '')
                     return;
                 const opts = optStr.split(/\s+/);
@@ -4458,8 +4465,11 @@ class connectedContent extends Tag {
         }
     }
     async *render(ctx) {
+        // For debugging
+        console.log('Evaluating value:', this.value);
         const urlValue = await this.value.value(ctx);
         const url = String(urlValue);
+        console.log('Resolved URL:', url);
         if (!url) {
             throw new Error(`Invalid URL: ${url}`);
         }
