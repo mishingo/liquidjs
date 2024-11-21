@@ -26,7 +26,7 @@ export class Parser {
     this.parseLimit = new Limiter('parse length', liquid.options.parseLimit)
   }
   public parse (html: string, filepath?: string): Template[] {
-    console.log(html.match(/(?<!\{\{content_blocks\.)\$\{([^}]+)\}/g))
+    //console.log(html.match(/(?<!\{\{content_blocks\.)\$\{([^}]+)\}/g))
     html = String(html.replace(/(?<!\{\{content_blocks\.)\$\{([^}]+)\}/g, '$1'))
 
     this.parseLimit.use(html.length)

@@ -1,47 +1,43 @@
 import { Value, Liquid, TopLevelToken, TagToken, Context, Tag } from '../..'
-import {TagImplOptions} from '../../template/tag-options-adapter'
 // @ts-ignore
 import * as rp_ from 'request-promise-cache'
 const rp = rp_
 
-const re = new RegExp(`(https?(?:[^\\s]+|\\{\\{.*?\\}\\})+)(\\s+(\\s|.)*)?$`)
-
 const headerRegex = new RegExp(`:headers\\s+(\\{(.|\\s)*?[^\\}]\\}([^\\}]|$))`)
 
-// supported options: :basic_auth, :content_type, :save, :cache, :method, :body, :headers
-export default <TagImplOptions>{
-  parse: function (tagToken: TagToken) {
-    const match = tagToken.args.match(re)
-    if (!match) {
-      //@ts-ignore
-      throw new Error(`illegal token ${tagToken.raw}`)
-    }
-    this.url = match[1]
-    const options = match[2]
-    this.options = {}
-    if (options) {
-      // first extract the headers option if it exists, because the headers JSON will contain a /\s+:/
-      const headersMatch = options.match(headerRegex)
+export default class extends Tag {
+  value: Value
+  options: Record<string, any> = {}
+
+  constructor (token: TagToken, remainTokens: TopLevelToken[], liquid: Liquid) {
+    super(token, remainTokens, liquid)
+    const filteredValue = this.tokenizer.readFilteredValue()
+    this.value = new Value(filteredValue, this.liquid)
+
+    // Get any remaining content after the URL for options
+    const remainingContent = this.tokenizer.remaining()
+    if (remainingContent) {
+      const headersMatch = remainingContent.match(headerRegex)
       if (headersMatch != null) {
         this.options.headers = JSON.parse(headersMatch[1])
       }
-      // then replace the headers option if it exists, and proceed as normal for the other options
-      options.replace(headerRegex, '').split(/\s+:/).forEach((optStr) => {
+      remainingContent.replace(headerRegex, '').split(/\s+:/).forEach((optStr) => {
         if (optStr === '') return
-
         const opts = optStr.split(/\s+/)
-        if (opts[0] === 'headers') {
-          console.error('Headers JSON malformed. Check your headers value')
-        }
         this.options[opts[0]] = opts.length > 1 ? opts[1] : true
       })
     }
-  },
-  render: async function (ctx: Context) {
-    const renderedUrl = await this.liquid.parseAndRender(this.url, ctx.getAll())
+  }
+
+  * render (ctx: Context) {
+    const url = yield this.value.value(ctx)
+    
+    if (!url || typeof url !== 'string') {
+      throw new Error(`Invalid URL: ${url}`)
+    }
 
     const method = (this.options.method || 'GET').toUpperCase()
-    let cacheTTL = 300 * 1000 // default 5 mins
+    let cacheTTL = 300 * 1000
     if (method !== 'GET') {
       cacheTTL = 0
     } else {
@@ -49,39 +45,37 @@ export default <TagImplOptions>{
       if (cache > 0) {
         cacheTTL = cache * 1000
       } else if (cache === 0) {
-        // This is a hack, nano-cache will not expire cache when ttl = 0
         cacheTTL = 1
       }
     }
 
-    let contentType = this.options.content_type
-    if (method === 'POST') {
-      contentType = this.options.content_type || 'application/x-www-form-urlencoded'
-    }
+    const contentType = method === 'POST' 
+      ? (this.options.content_type || 'application/x-www-form-urlencoded')
+      : this.options.content_type
 
     const headers = {
       'User-Agent': 'brazejs-client',
       'Content-Type': contentType,
       'Accept': this.options.content_type
     }
+
     if (this.options.headers) {
-      // Add specified headers to the headers
       for (const key of Object.keys(this.options.headers)) {
-        headers[key] = await this.liquid.parseAndRender(this.options.headers[key], ctx.getAll())
+        headers[key] = yield this.liquid.parseAndRender(this.options.headers[key], ctx.getAll())
       }
     }
 
     let body = this.options.body
-    if (this.options.body) {
-      if (method.toUpperCase() === 'POST' && contentType.toLowerCase().includes('application/json')) {
+    if (body) {
+      if (method === 'POST' && contentType?.toLowerCase().includes('application/json')) {
         const jsonBody = {}
-        for (const element of this.options.body.split('&')) {
-          const bodyElementSplit = element.split('=')
-          jsonBody[bodyElementSplit[0]] = (await this.liquid.parseAndRender(bodyElementSplit[1], ctx.getAll())).replace(/(?:\r\n|\r|\n|)/g, '')
+        for (const element of body.split('&')) {
+          const [key, value] = element.split('=')
+          jsonBody[key] = (yield this.liquid.parseAndRender(value, ctx.getAll())).replace(/(?:\r\n|\r|\n)/g, '')
         }
         body = JSON.stringify(jsonBody)
       } else {
-        body = await this.liquid.parseAndRender(this.options.body, ctx.getAll())
+        body = yield this.liquid.parseAndRender(body, ctx.getAll())
       }
     }
 
@@ -90,8 +84,8 @@ export default <TagImplOptions>{
       method,
       headers,
       body,
-      uri: renderedUrl,
-      cacheKey: renderedUrl,
+      uri: url,
+      cacheKey: url,
       cacheTTL,
       timeout: 2000
     }
@@ -105,11 +99,9 @@ export default <TagImplOptions>{
       if (!secret) {
         throw new Error(`No secret found for ${this.options.basic_auth}`)
       }
-
       if (!secret.username || !secret.password) {
         throw new Error(`No username or password set for ${this.options.basic_auth}`)
       }
-
       rpOption['auth'] = {
         user: secret.username,
         pass: secret.password
@@ -118,7 +110,7 @@ export default <TagImplOptions>{
 
     let res
     try {
-      res = await rp(rpOption)
+      res = yield rp(rpOption)
     } catch (e) {
       res = e
     }
@@ -128,16 +120,16 @@ export default <TagImplOptions>{
         const jsonRes = JSON.parse(res.body)
         jsonRes.__http_status_code__ = res.statusCode
         ctx.environments[this.options.save || 'connected'] = jsonRes
+        return
       } catch (error) {
-        if (res.headers['content-type'] !== undefined && res.headers['content-type'].includes('json')) {
+        if (res.headers['content-type']?.includes('json')) {
           console.error(`Failed to parse body as JSON: "${res.body}"`)
         } else {
           return res.body
         }
       }
     } else {
-      console.error(`${renderedUrl} responded with ${res.statusCode}:\n` +
-                    `${res.body}`)
+      console.error(`${url} responded with ${res.statusCode}:\n${res.body}`)
     }
   }
 }
