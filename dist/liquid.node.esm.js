@@ -543,22 +543,6 @@ function __awaiter(thisArg, _arguments, P, generator) {
     });
 }
 
-function __await(v) {
-    return this instanceof __await ? (this.v = v, this) : new __await(v);
-}
-
-function __asyncGenerator(thisArg, _arguments, generator) {
-    if (!Symbol.asyncIterator) throw new TypeError("Symbol.asyncIterator is not defined.");
-    var g = generator.apply(thisArg, _arguments || []), i, q = [];
-    return i = {}, verb("next"), verb("throw"), verb("return"), i[Symbol.asyncIterator] = function () { return this; }, i;
-    function verb(n) { if (g[n]) i[n] = function (v) { return new Promise(function (a, b) { q.push([n, v, a, b]) > 1 || resume(n, v); }); }; }
-    function resume(n, v) { try { step(g[n](v)); } catch (e) { settle(q[0][3], e); } }
-    function step(r) { r.value instanceof __await ? Promise.resolve(r.value.v).then(fulfill, reject) : settle(q[0][2], r); }
-    function fulfill(value) { resume("next", value); }
-    function reject(value) { resume("throw", value); }
-    function settle(f, v) { if (f(v), q.shift(), q.length) resume(q[0][0], q[0][1]); }
-}
-
 // convert an async iterator to a Promise
 function toPromise(val) {
     return __awaiter(this, void 0, void 0, function* () {
@@ -4471,23 +4455,20 @@ class connectedContent extends Tag {
     constructor(token, remainTokens, liquid) {
         super(token, remainTokens, liquid);
         this.options = {};
-        // Get all the arguments as a string and trim whitespace
-        const args = token.args.trim();
-        // For debugging
-        console.log('Token args:', args);
-        // Create a Value object directly from the args
-        this.value = new Value(args, this.liquid);
-        // Skip past the URL part
+        const valueName = this.tokenizer.readFilteredValue();
+        if (!valueName) {
+            throw new Error(`missing URL in ${token.getText()}`);
+        }
+        this.value = new Value(valueName, this.liquid);
+        // Parse remaining options
         this.tokenizer.skipBlank();
-        // Parse remaining options if they exist
-        const optionsMatch = args.match(/\s+:(.+)$/);
-        if (optionsMatch) {
-            const optionsStr = optionsMatch[1];
-            const headersMatch = optionsStr.match(headerRegex);
+        const remaining = this.tokenizer.remaining();
+        if (remaining) {
+            const headersMatch = remaining.match(headerRegex);
             if (headersMatch != null) {
                 this.options.headers = JSON.parse(headersMatch[1]);
             }
-            optionsStr.replace(headerRegex, '').split(/\s+:/).forEach((optStr) => {
+            remaining.replace(headerRegex, '').split(/\s+:/).forEach((optStr) => {
                 if (optStr === '')
                     return;
                 const opts = optStr.split(/\s+/);
@@ -4495,115 +4476,110 @@ class connectedContent extends Tag {
             });
         }
     }
-    render(ctx) {
-        var _a;
-        return __asyncGenerator(this, arguments, function* render_1() {
-            // For debugging
-            console.log('Evaluating value:', this.value);
-            const urlValue = yield __await(this.value.value(ctx));
-            const url = String(urlValue);
-            console.log('Resolved URL:', url);
-            if (!url) {
-                throw new Error(`Invalid URL: ${url}`);
+    *render(ctx) {
+        var _a, _b;
+        const urlResult = yield this.value.value(ctx);
+        const url = String(urlResult);
+        if (!url) {
+            throw new Error(`Invalid URL: ${url}`);
+        }
+        const method = (this.options.method || 'GET').toUpperCase();
+        let cacheTTL = 300 * 1000;
+        if (method !== 'GET') {
+            cacheTTL = 0;
+        }
+        else {
+            const cache = parseInt(this.options.cache, 10);
+            if (cache > 0) {
+                cacheTTL = cache * 1000;
             }
-            const method = (this.options.method || 'GET').toUpperCase();
-            let cacheTTL = 300 * 1000;
-            if (method !== 'GET') {
-                cacheTTL = 0;
+            else if (cache === 0) {
+                cacheTTL = 1;
+            }
+        }
+        const contentType = method === 'POST'
+            ? (this.options.content_type || 'application/x-www-form-urlencoded')
+            : this.options.content_type;
+        const headers = {
+            'User-Agent': 'brazejs-client',
+            'Content-Type': contentType,
+            'Accept': this.options.content_type
+        };
+        if (this.options.headers) {
+            for (const key of Object.keys(this.options.headers)) {
+                const headerValue = yield this.liquid.parseAndRender(this.options.headers[key], ctx.getAll());
+                headers[key] = String(headerValue);
+            }
+        }
+        let body = this.options.body;
+        if (body) {
+            if (method === 'POST' && (contentType === null || contentType === void 0 ? void 0 : contentType.toLowerCase().includes('application/json'))) {
+                const jsonBody = {};
+                for (const element of body.split('&')) {
+                    const [key, value] = element.split('=');
+                    const renderedValue = yield this.liquid.parseAndRender(value, ctx.getAll());
+                    jsonBody[key] = String(renderedValue).replace(/(?:\r\n|\r|\n)/g, '');
+                }
+                body = JSON.stringify(jsonBody);
             }
             else {
-                const cache = parseInt(this.options.cache, 10);
-                if (cache > 0) {
-                    cacheTTL = cache * 1000;
-                }
-                else if (cache === 0) {
-                    cacheTTL = 1;
-                }
+                const renderedBody = yield this.liquid.parseAndRender(body, ctx.getAll());
+                body = String(renderedBody);
             }
-            const contentType = method === 'POST'
-                ? (this.options.content_type || 'application/x-www-form-urlencoded')
-                : this.options.content_type;
-            const headers = {
-                'User-Agent': 'brazejs-client',
-                'Content-Type': contentType,
-                'Accept': this.options.content_type
+        }
+        const rpOption = {
+            'resolveWithFullResponse': true,
+            method,
+            headers,
+            body,
+            uri: url,
+            cacheKey: url,
+            cacheTTL,
+            timeout: 2000
+        };
+        if (this.options.basic_auth) {
+            const secrets = ctx.environments['__secrets'];
+            if (!secrets) {
+                throw new Error('No secrets defined in context!');
+            }
+            const secret = secrets[this.options.basic_auth];
+            if (!secret) {
+                throw new Error(`No secret found for ${this.options.basic_auth}`);
+            }
+            if (!secret.username || !secret.password) {
+                throw new Error(`No username or password set for ${this.options.basic_auth}`);
+            }
+            rpOption['auth'] = {
+                user: secret.username,
+                pass: secret.password
             };
-            if (this.options.headers) {
-                for (const key of Object.keys(this.options.headers)) {
-                    const headerValue = yield __await(this.liquid.parseAndRender(this.options.headers[key], ctx.getAll()));
-                    headers[key] = String(headerValue);
-                }
+        }
+        let res;
+        try {
+            res = (yield rp(rpOption));
+        }
+        catch (e) {
+            res = e;
+        }
+        if (res.statusCode >= 200 && res.statusCode <= 299) {
+            try {
+                const jsonRes = JSON.parse(res.body);
+                jsonRes.__http_status_code__ = res.statusCode;
+                ctx.environments[this.options.save || 'connected'] = jsonRes;
+                return;
             }
-            let body = this.options.body;
-            if (body) {
-                if (method === 'POST' && (contentType === null || contentType === void 0 ? void 0 : contentType.toLowerCase().includes('application/json'))) {
-                    const jsonBody = {};
-                    for (const element of body.split('&')) {
-                        const [key, value] = element.split('=');
-                        const renderedValue = yield __await(this.liquid.parseAndRender(value, ctx.getAll()));
-                        jsonBody[key] = String(renderedValue).replace(/(?:\r\n|\r|\n)/g, '');
-                    }
-                    body = JSON.stringify(jsonBody);
+            catch (error) {
+                if ((_b = (_a = res.headers) === null || _a === void 0 ? void 0 : _a['content-type']) === null || _b === void 0 ? void 0 : _b.includes('json')) {
+                    console.error(`Failed to parse body as JSON: "${res.body}"`);
                 }
                 else {
-                    const renderedBody = yield __await(this.liquid.parseAndRender(body, ctx.getAll()));
-                    body = String(renderedBody);
+                    return res.body;
                 }
             }
-            const rpOption = {
-                'resolveWithFullResponse': true,
-                method,
-                headers,
-                body,
-                uri: url,
-                cacheKey: url,
-                cacheTTL,
-                timeout: 2000
-            };
-            if (this.options.basic_auth) {
-                const secrets = ctx.environments['__secrets'];
-                if (!secrets) {
-                    throw new Error('No secrets defined in context!');
-                }
-                const secret = secrets[this.options.basic_auth];
-                if (!secret) {
-                    throw new Error(`No secret found for ${this.options.basic_auth}`);
-                }
-                if (!secret.username || !secret.password) {
-                    throw new Error(`No username or password set for ${this.options.basic_auth}`);
-                }
-                rpOption['auth'] = {
-                    user: secret.username,
-                    pass: secret.password
-                };
-            }
-            let res;
-            try {
-                res = yield __await(rp(rpOption));
-            }
-            catch (e) {
-                res = e;
-            }
-            if (res.statusCode >= 200 && res.statusCode <= 299) {
-                try {
-                    const jsonRes = JSON.parse(res.body);
-                    jsonRes.__http_status_code__ = res.statusCode;
-                    ctx.environments[this.options.save || 'connected'] = jsonRes;
-                    return yield __await(void 0);
-                }
-                catch (error) {
-                    if ((_a = res.headers['content-type']) === null || _a === void 0 ? void 0 : _a.includes('json')) {
-                        console.error(`Failed to parse body as JSON: "${res.body}"`);
-                    }
-                    else {
-                        return yield __await(res.body);
-                    }
-                }
-            }
-            else {
-                console.error(`${url} responded with ${res.statusCode}:\n${res.body}`);
-            }
-        });
+        }
+        else {
+            console.error(`${url} responded with ${res.statusCode}:\n${res.body}`);
+        }
     }
 }
 

@@ -1,38 +1,42 @@
 import { Value, Liquid, TopLevelToken, TagToken, Context, Tag } from '../..'
+import { FilteredValueToken } from '../../tokens'
 // @ts-ignore
 import * as rp_ from 'request-promise-cache'
 const rp = rp_
 
 const headerRegex = new RegExp(`:headers\\s+(\\{(.|\\s)*?[^\\}]\\}([^\\}]|$))`)
 
+interface RequestResponse {
+  statusCode: number;
+  body: string;
+  headers?: {
+    'content-type'?: string;
+    [key: string]: string | undefined;
+  };
+}
+
 export default class extends Tag {
-  value: Value
-  options: Record<string, any> = {}
+  private value: Value
+  private options: Record<string, any> = {}
 
   constructor (token: TagToken, remainTokens: TopLevelToken[], liquid: Liquid) {
     super(token, remainTokens, liquid)
 
-    // Get all the arguments as a string and trim whitespace
-    const args = token.args.trim()
-    
-    // For debugging
-    console.log('Token args:', args)
-    
-    // Create a Value object directly from the args
-    this.value = new Value(args, this.liquid)
+    const valueName = this.tokenizer.readFilteredValue()
+    if (!valueName) {
+      throw new Error(`missing URL in ${token.getText()}`)
+    }
+    this.value = new Value(valueName as FilteredValueToken, this.liquid)
 
-    // Skip past the URL part
+    // Parse remaining options
     this.tokenizer.skipBlank()
-
-    // Parse remaining options if they exist
-    const optionsMatch = args.match(/\s+:(.+)$/)
-    if (optionsMatch) {
-      const optionsStr = optionsMatch[1]
-      const headersMatch = optionsStr.match(headerRegex)
+    const remaining = this.tokenizer.remaining()
+    if (remaining) {
+      const headersMatch = remaining.match(headerRegex)
       if (headersMatch != null) {
         this.options.headers = JSON.parse(headersMatch[1])
       }
-      optionsStr.replace(headerRegex, '').split(/\s+:/).forEach((optStr) => {
+      remaining.replace(headerRegex, '').split(/\s+:/).forEach((optStr) => {
         if (optStr === '') return
         const opts = optStr.split(/\s+/)
         this.options[opts[0]] = opts.length > 1 ? opts[1] : true
@@ -40,14 +44,9 @@ export default class extends Tag {
     }
   }
 
-  async * render (ctx: Context): AsyncGenerator<unknown, void | string, unknown> {
-    // For debugging
-    console.log('Evaluating value:', this.value)
-    
-    const urlValue = await this.value.value(ctx)
-    const url = String(urlValue)
-    
-    console.log('Resolved URL:', url)
+  * render (ctx: Context): Generator<unknown, void | string, unknown> {
+    const urlResult = yield this.value.value(ctx)
+    const url = String(urlResult)
     
     if (!url) {
       throw new Error(`Invalid URL: ${url}`)
@@ -70,7 +69,7 @@ export default class extends Tag {
       ? (this.options.content_type || 'application/x-www-form-urlencoded')
       : this.options.content_type
 
-    const headers = {
+    const headers: Record<string, string> = {
       'User-Agent': 'brazejs-client',
       'Content-Type': contentType,
       'Accept': this.options.content_type
@@ -78,23 +77,23 @@ export default class extends Tag {
 
     if (this.options.headers) {
       for (const key of Object.keys(this.options.headers)) {
-        const headerValue = await this.liquid.parseAndRender(this.options.headers[key], ctx.getAll())
+        const headerValue = yield this.liquid.parseAndRender(this.options.headers[key], ctx.getAll())
         headers[key] = String(headerValue)
       }
     }
 
-    let body = this.options.body
+    let body: string | undefined = this.options.body
     if (body) {
       if (method === 'POST' && contentType?.toLowerCase().includes('application/json')) {
         const jsonBody: Record<string, string> = {}
         for (const element of body.split('&')) {
           const [key, value] = element.split('=')
-          const renderedValue = await this.liquid.parseAndRender(value, ctx.getAll())
+          const renderedValue = yield this.liquid.parseAndRender(value, ctx.getAll())
           jsonBody[key] = String(renderedValue).replace(/(?:\r\n|\r|\n)/g, '')
         }
         body = JSON.stringify(jsonBody)
       } else {
-        const renderedBody = await this.liquid.parseAndRender(body, ctx.getAll())
+        const renderedBody = yield this.liquid.parseAndRender(body, ctx.getAll())
         body = String(renderedBody)
       }
     }
@@ -128,11 +127,11 @@ export default class extends Tag {
       }
     }
 
-    let res
+    let res: RequestResponse
     try {
-      res = await rp(rpOption)
+      res = (yield rp(rpOption)) as RequestResponse
     } catch (e) {
-      res = e
+      res = e as RequestResponse
     }
 
     if (res.statusCode >= 200 && res.statusCode <= 299) {
@@ -142,7 +141,7 @@ export default class extends Tag {
         ctx.environments[this.options.save || 'connected'] = jsonRes
         return
       } catch (error) {
-        if (res.headers['content-type']?.includes('json')) {
+        if (res.headers?.['content-type']?.includes('json')) {
           console.error(`Failed to parse body as JSON: "${res.body}"`)
         } else {
           return res.body

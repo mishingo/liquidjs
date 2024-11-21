@@ -4440,23 +4440,20 @@ class connectedContent extends Tag {
     constructor(token, remainTokens, liquid) {
         super(token, remainTokens, liquid);
         this.options = {};
-        // Get all the arguments as a string and trim whitespace
-        const args = token.args.trim();
-        // For debugging
-        console.log('Token args:', args);
-        // Create a Value object directly from the args
-        this.value = new Value(args, this.liquid);
-        // Skip past the URL part
+        const valueName = this.tokenizer.readFilteredValue();
+        if (!valueName) {
+            throw new Error(`missing URL in ${token.getText()}`);
+        }
+        this.value = new Value(valueName, this.liquid);
+        // Parse remaining options
         this.tokenizer.skipBlank();
-        // Parse remaining options if they exist
-        const optionsMatch = args.match(/\s+:(.+)$/);
-        if (optionsMatch) {
-            const optionsStr = optionsMatch[1];
-            const headersMatch = optionsStr.match(headerRegex);
+        const remaining = this.tokenizer.remaining();
+        if (remaining) {
+            const headersMatch = remaining.match(headerRegex);
             if (headersMatch != null) {
                 this.options.headers = JSON.parse(headersMatch[1]);
             }
-            optionsStr.replace(headerRegex, '').split(/\s+:/).forEach((optStr) => {
+            remaining.replace(headerRegex, '').split(/\s+:/).forEach((optStr) => {
                 if (optStr === '')
                     return;
                 const opts = optStr.split(/\s+/);
@@ -4464,12 +4461,9 @@ class connectedContent extends Tag {
             });
         }
     }
-    async *render(ctx) {
-        // For debugging
-        console.log('Evaluating value:', this.value);
-        const urlValue = await this.value.value(ctx);
-        const url = String(urlValue);
-        console.log('Resolved URL:', url);
+    *render(ctx) {
+        const urlResult = yield this.value.value(ctx);
+        const url = String(urlResult);
         if (!url) {
             throw new Error(`Invalid URL: ${url}`);
         }
@@ -4497,7 +4491,7 @@ class connectedContent extends Tag {
         };
         if (this.options.headers) {
             for (const key of Object.keys(this.options.headers)) {
-                const headerValue = await this.liquid.parseAndRender(this.options.headers[key], ctx.getAll());
+                const headerValue = yield this.liquid.parseAndRender(this.options.headers[key], ctx.getAll());
                 headers[key] = String(headerValue);
             }
         }
@@ -4507,13 +4501,13 @@ class connectedContent extends Tag {
                 const jsonBody = {};
                 for (const element of body.split('&')) {
                     const [key, value] = element.split('=');
-                    const renderedValue = await this.liquid.parseAndRender(value, ctx.getAll());
+                    const renderedValue = yield this.liquid.parseAndRender(value, ctx.getAll());
                     jsonBody[key] = String(renderedValue).replace(/(?:\r\n|\r|\n)/g, '');
                 }
                 body = JSON.stringify(jsonBody);
             }
             else {
-                const renderedBody = await this.liquid.parseAndRender(body, ctx.getAll());
+                const renderedBody = yield this.liquid.parseAndRender(body, ctx.getAll());
                 body = String(renderedBody);
             }
         }
@@ -4546,7 +4540,7 @@ class connectedContent extends Tag {
         }
         let res;
         try {
-            res = await rp(rpOption);
+            res = (yield rp(rpOption));
         }
         catch (e) {
             res = e;
@@ -4559,7 +4553,7 @@ class connectedContent extends Tag {
                 return;
             }
             catch (error) {
-                if (res.headers['content-type']?.includes('json')) {
+                if (res.headers?.['content-type']?.includes('json')) {
                     console.error(`Failed to parse body as JSON: "${res.body}"`);
                 }
                 else {
