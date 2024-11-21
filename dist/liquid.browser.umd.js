@@ -5978,23 +5978,26 @@
         function default_1(token, remainTokens, liquid) {
             var _this = _super.call(this, token, remainTokens, liquid) || this;
             _this.options = {};
-            var valueName = _this.tokenizer.readFilteredValue();
-            if (!valueName) {
+            // First read just the URL
+            var urlIdentifier = _this.tokenizer.readIdentifier();
+            if (!urlIdentifier) {
                 throw new Error("missing URL in ".concat(token.getText()));
             }
-            _this.value = new Value(valueName, _this.liquid);
+            // Create value from just the identifier
+            _this.value = new Value(String(urlIdentifier), _this.liquid);
+            // Parse remaining options
             _this.tokenizer.skipBlank();
-            var remaining = _this.tokenizer.remaining();
-            if (remaining) {
-                var headersMatch = remaining.match(headerRegex);
+            var args = _this.tokenizer.remaining().trim();
+            if (args) {
+                var headersMatch = args.match(headerRegex);
                 if (headersMatch != null) {
                     _this.options.headers = JSON.parse(headersMatch[1]);
                 }
-                remaining.replace(headerRegex, '').split(/\s+:/).forEach(function (optStr) {
-                    if (optStr === '')
-                        return;
-                    var opts = optStr.split(/\s+/);
-                    _this.options[opts[0]] = opts.length > 1 ? opts[1] : true;
+                var optionsStr = args.replace(headerRegex, '').trim();
+                var optionPairs = optionsStr.match(/:\w+\s+[^\s:]+/g) || [];
+                optionPairs.forEach(function (pair) {
+                    var _a = __read(pair.slice(1).split(/\s+/), 2), key = _a[0], value = _a[1];
+                    _this.options[key] = value;
                 });
             }
             return _this;

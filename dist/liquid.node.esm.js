@@ -4455,23 +4455,26 @@ class connectedContent extends Tag {
     constructor(token, remainTokens, liquid) {
         super(token, remainTokens, liquid);
         this.options = {};
-        const valueName = this.tokenizer.readFilteredValue();
-        if (!valueName) {
+        // First read just the URL
+        const urlIdentifier = this.tokenizer.readIdentifier();
+        if (!urlIdentifier) {
             throw new Error(`missing URL in ${token.getText()}`);
         }
-        this.value = new Value(valueName, this.liquid);
+        // Create value from just the identifier
+        this.value = new Value(String(urlIdentifier), this.liquid);
+        // Parse remaining options
         this.tokenizer.skipBlank();
-        const remaining = this.tokenizer.remaining();
-        if (remaining) {
-            const headersMatch = remaining.match(headerRegex);
+        const args = this.tokenizer.remaining().trim();
+        if (args) {
+            const headersMatch = args.match(headerRegex);
             if (headersMatch != null) {
                 this.options.headers = JSON.parse(headersMatch[1]);
             }
-            remaining.replace(headerRegex, '').split(/\s+:/).forEach((optStr) => {
-                if (optStr === '')
-                    return;
-                const opts = optStr.split(/\s+/);
-                this.options[opts[0]] = opts.length > 1 ? opts[1] : true;
+            const optionsStr = args.replace(headerRegex, '').trim();
+            const optionPairs = optionsStr.match(/:\w+\s+[^\s:]+/g) || [];
+            optionPairs.forEach(pair => {
+                const [key, value] = pair.slice(1).split(/\s+/);
+                this.options[key] = value;
             });
         }
     }
