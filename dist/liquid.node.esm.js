@@ -4456,11 +4456,18 @@ class connectedContent extends Tag {
         super(token, remainTokens, liquid);
         this.options = {};
         this.tokenizer.skipBlank();
+        // Try to read the initial part
         if (this.tokenizer.peek() === '{' && this.tokenizer.peek(1) === '{') {
+            // Skip the opening braces
             this.tokenizer.p += 2;
-            const urlToken = this.tokenizer.readValue();
-            if (!urlToken)
-                throw new Error('missing URL in handlebars expression');
+            // Skip any whitespace
+            this.tokenizer.skipBlank();
+            // Read the variable name
+            const urlToken = this.tokenizer.readIdentifier();
+            if (!urlToken || !urlToken.getText()) {
+                throw new Error('missing URL variable name');
+            }
+            // Skip to closing braces
             this.tokenizer.skipBlank();
             if (this.tokenizer.peek() === '}' && this.tokenizer.peek(1) === '}') {
                 this.tokenizer.p += 2;
@@ -4468,14 +4475,17 @@ class connectedContent extends Tag {
             else {
                 throw new Error('unclosed handlebars expression');
             }
+            // Create the value
             this.value = new Value(urlToken.getText(), this.liquid);
         }
         else {
+            // Handle direct URL case
             const urlToken = this.tokenizer.readValue();
             if (!urlToken)
                 throw new Error('missing URL');
             this.value = new Value(urlToken.getText(), this.liquid);
         }
+        // Parse remaining options
         this.tokenizer.skipBlank();
         const args = this.tokenizer.remaining().trim();
         if (args) {
