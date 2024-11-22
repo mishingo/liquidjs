@@ -5978,13 +5978,13 @@
         function default_1(token, remainTokens, liquid) {
             var _this = _super.call(this, token, remainTokens, liquid) || this;
             _this.options = {};
-            // First read just the URL
-            var urlIdentifier = _this.tokenizer.readIdentifier();
-            if (!urlIdentifier) {
+            // Read the full URL expression
+            var urlValue = _this.tokenizer.readValue();
+            if (!urlValue) {
                 throw new Error("missing URL in ".concat(token.getText()));
             }
-            // Create value from just the identifier
-            _this.value = new Value(String(urlIdentifier), _this.liquid);
+            // Create value from the expression
+            _this.value = new Value(urlValue.getText(), _this.liquid);
             // Parse remaining options
             _this.tokenizer.skipBlank();
             var args = _this.tokenizer.remaining().trim();

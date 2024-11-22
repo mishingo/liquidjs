@@ -26,17 +26,17 @@ export default class extends Tag {
   private value: Value
   private options: Record<string, any> = {}
 
-  constructor (token: TagToken, remainTokens: TopLevelToken[], liquid: Liquid) {
+  constructor(token: TagToken, remainTokens: TopLevelToken[], liquid: Liquid) {
     super(token, remainTokens, liquid)
 
-    // First read just the URL
-    const urlIdentifier = this.tokenizer.readIdentifier()
-    if (!urlIdentifier) {
+    // Read the full URL expression
+    const urlValue = this.tokenizer.readValue()
+    if (!urlValue) {
       throw new Error(`missing URL in ${token.getText()}`)
     }
     
-    // Create value from just the identifier
-    this.value = new Value(String(urlIdentifier), this.liquid)
+    // Create value from the expression
+    this.value = new Value(urlValue.getText(), this.liquid)
 
     // Parse remaining options
     this.tokenizer.skipBlank()
@@ -58,7 +58,7 @@ export default class extends Tag {
     }
   }
 
-  * render (ctx: Context): Generator<unknown, void, unknown> {
+  * render(ctx: Context): Generator<unknown, void, unknown> {
     const urlResult = yield this.value.value(ctx)
     const url = String(urlResult)
     

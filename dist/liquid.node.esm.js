@@ -4455,13 +4455,13 @@ class connectedContent extends Tag {
     constructor(token, remainTokens, liquid) {
         super(token, remainTokens, liquid);
         this.options = {};
-        // First read just the URL
-        const urlIdentifier = this.tokenizer.readIdentifier();
-        if (!urlIdentifier) {
+        // Read the full URL expression
+        const urlValue = this.tokenizer.readValue();
+        if (!urlValue) {
             throw new Error(`missing URL in ${token.getText()}`);
         }
-        // Create value from just the identifier
-        this.value = new Value(String(urlIdentifier), this.liquid);
+        // Create value from the expression
+        this.value = new Value(urlValue.getText(), this.liquid);
         // Parse remaining options
         this.tokenizer.skipBlank();
         const args = this.tokenizer.remaining().trim();
