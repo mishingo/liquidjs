@@ -4440,14 +4440,27 @@ class connectedContent extends Tag {
     constructor(token, remainTokens, liquid) {
         super(token, remainTokens, liquid);
         this.options = {};
-        // Read the full URL expression
-        const urlValue = this.tokenizer.readValue();
-        if (!urlValue) {
-            throw new Error(`missing URL in ${token.getText()}`);
+        this.tokenizer.skipBlank();
+        if (this.tokenizer.peek() === '{' && this.tokenizer.peek(1) === '{') {
+            this.tokenizer.p += 2;
+            const urlToken = this.tokenizer.readValue();
+            if (!urlToken)
+                throw new Error('missing URL in handlebars expression');
+            this.tokenizer.skipBlank();
+            if (this.tokenizer.peek() === '}' && this.tokenizer.peek(1) === '}') {
+                this.tokenizer.p += 2;
+            }
+            else {
+                throw new Error('unclosed handlebars expression');
+            }
+            this.value = new Value(urlToken.getText(), this.liquid);
         }
-        // Create value from the expression
-        this.value = new Value(urlValue.getText(), this.liquid);
-        // Parse remaining options
+        else {
+            const urlToken = this.tokenizer.readValue();
+            if (!urlToken)
+                throw new Error('missing URL');
+            this.value = new Value(urlToken.getText(), this.liquid);
+        }
         this.tokenizer.skipBlank();
         const args = this.tokenizer.remaining().trim();
         if (args) {

@@ -5978,14 +5978,27 @@
         function default_1(token, remainTokens, liquid) {
             var _this = _super.call(this, token, remainTokens, liquid) || this;
             _this.options = {};
-            // Read the full URL expression
-            var urlValue = _this.tokenizer.readValue();
-            if (!urlValue) {
-                throw new Error("missing URL in ".concat(token.getText()));
+            _this.tokenizer.skipBlank();
+            if (_this.tokenizer.peek() === '{' && _this.tokenizer.peek(1) === '{') {
+                _this.tokenizer.p += 2;
+                var urlToken = _this.tokenizer.readValue();
+                if (!urlToken)
+                    throw new Error('missing URL in handlebars expression');
+                _this.tokenizer.skipBlank();
+                if (_this.tokenizer.peek() === '}' && _this.tokenizer.peek(1) === '}') {
+                    _this.tokenizer.p += 2;
+                }
+                else {
+                    throw new Error('unclosed handlebars expression');
+                }
+                _this.value = new Value(urlToken.getText(), _this.liquid);
             }
-            // Create value from the expression
-            _this.value = new Value(urlValue.getText(), _this.liquid);
-            // Parse remaining options
+            else {
+                var urlToken = _this.tokenizer.readValue();
+                if (!urlToken)
+                    throw new Error('missing URL');
+                _this.value = new Value(urlToken.getText(), _this.liquid);
+            }
             _this.tokenizer.skipBlank();
             var args = _this.tokenizer.remaining().trim();
             if (args) {
