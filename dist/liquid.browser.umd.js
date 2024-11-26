@@ -5979,18 +5979,14 @@
             var _this = _super.call(this, token, remainTokens, liquid) || this;
             _this.options = {};
             _this.tokenizer.skipBlank();
-            // Try to read the initial part
+            var urlStr;
             if (_this.tokenizer.peek() === '{' && _this.tokenizer.peek(1) === '{') {
-                // Skip the opening braces
                 _this.tokenizer.p += 2;
-                // Skip any whitespace
                 _this.tokenizer.skipBlank();
-                // Read the variable name
                 var urlToken = _this.tokenizer.readIdentifier();
                 if (!urlToken || !urlToken.getText()) {
                     throw new Error('missing URL variable name');
                 }
-                // Skip to closing braces
                 _this.tokenizer.skipBlank();
                 if (_this.tokenizer.peek() === '}' && _this.tokenizer.peek(1) === '}') {
                     _this.tokenizer.p += 2;
@@ -5998,17 +5994,20 @@
                 else {
                     throw new Error('unclosed handlebars expression');
                 }
-                // Create the value
-                _this.value = new Value(urlToken.getText(), _this.liquid);
+                urlStr = urlToken.getText();
             }
             else {
-                // Handle direct URL case
-                var urlToken = _this.tokenizer.readValue();
-                if (!urlToken)
+                var begin = _this.tokenizer.p;
+                while (_this.tokenizer.p < _this.tokenizer.N &&
+                    _this.tokenizer.peek() !== ' ' &&
+                    _this.tokenizer.peek() !== ':') {
+                    _this.tokenizer.p++;
+                }
+                urlStr = _this.tokenizer.input.slice(begin, _this.tokenizer.p);
+                if (!urlStr)
                     throw new Error('missing URL');
-                _this.value = new Value(urlToken.getText(), _this.liquid);
             }
-            // Parse remaining options
+            _this.value = new Value(urlStr, _this.liquid);
             _this.tokenizer.skipBlank();
             var args = _this.tokenizer.remaining().trim();
             if (args) {

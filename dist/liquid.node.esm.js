@@ -4456,18 +4456,14 @@ class connectedContent extends Tag {
         super(token, remainTokens, liquid);
         this.options = {};
         this.tokenizer.skipBlank();
-        // Try to read the initial part
+        let urlStr;
         if (this.tokenizer.peek() === '{' && this.tokenizer.peek(1) === '{') {
-            // Skip the opening braces
             this.tokenizer.p += 2;
-            // Skip any whitespace
             this.tokenizer.skipBlank();
-            // Read the variable name
             const urlToken = this.tokenizer.readIdentifier();
             if (!urlToken || !urlToken.getText()) {
                 throw new Error('missing URL variable name');
             }
-            // Skip to closing braces
             this.tokenizer.skipBlank();
             if (this.tokenizer.peek() === '}' && this.tokenizer.peek(1) === '}') {
                 this.tokenizer.p += 2;
@@ -4475,17 +4471,20 @@ class connectedContent extends Tag {
             else {
                 throw new Error('unclosed handlebars expression');
             }
-            // Create the value
-            this.value = new Value(urlToken.getText(), this.liquid);
+            urlStr = urlToken.getText();
         }
         else {
-            // Handle direct URL case
-            const urlToken = this.tokenizer.readValue();
-            if (!urlToken)
+            const begin = this.tokenizer.p;
+            while (this.tokenizer.p < this.tokenizer.N &&
+                this.tokenizer.peek() !== ' ' &&
+                this.tokenizer.peek() !== ':') {
+                this.tokenizer.p++;
+            }
+            urlStr = this.tokenizer.input.slice(begin, this.tokenizer.p);
+            if (!urlStr)
                 throw new Error('missing URL');
-            this.value = new Value(urlToken.getText(), this.liquid);
         }
-        // Parse remaining options
+        this.value = new Value(urlStr, this.liquid);
         this.tokenizer.skipBlank();
         const args = this.tokenizer.remaining().trim();
         if (args) {
