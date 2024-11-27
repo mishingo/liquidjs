@@ -5978,8 +5978,8 @@
         function default_1(token, remainTokens, liquid) {
             var _this = _super.call(this, token, remainTokens, liquid) || this;
             _this.options = {};
+            _this.isVariable = false;
             _this.tokenizer.skipBlank();
-            var urlStr;
             if (_this.tokenizer.peek() === '{' && _this.tokenizer.peek(1) === '{') {
                 _this.tokenizer.p += 2;
                 _this.tokenizer.skipBlank();
@@ -5994,7 +5994,8 @@
                 else {
                     throw new Error('unclosed handlebars expression');
                 }
-                urlStr = urlToken.getText();
+                _this.urlStr = urlToken.getText();
+                _this.isVariable = true;
             }
             else {
                 var begin = _this.tokenizer.p;
@@ -6003,11 +6004,11 @@
                     _this.tokenizer.peek() !== ':') {
                     _this.tokenizer.p++;
                 }
-                urlStr = _this.tokenizer.input.slice(begin, _this.tokenizer.p);
-                if (!urlStr)
+                _this.urlStr = _this.tokenizer.input.slice(begin, _this.tokenizer.p);
+                if (!_this.urlStr)
                     throw new Error('missing URL');
+                _this.isVariable = false;
             }
-            _this.value = new Value(urlStr, _this.liquid);
             _this.tokenizer.skipBlank();
             var args = _this.tokenizer.remaining().trim();
             if (args) {
@@ -6025,14 +6026,22 @@
             return _this;
         }
         default_1.prototype.render = function (ctx) {
-            var urlResult, url, method, cacheTTL, cache, contentType, headers, _a, _b, key, headerValue, e_1_1, body, jsonBody, _c, _d, element, _e, key, value, renderedValue, e_2_1, renderedBody, rpOption, res, jsonRes, error_1, requestError;
+            var url, value, urlResult, method, cacheTTL, cache, contentType, headers, _a, _b, key, headerValue, e_1_1, body, jsonBody, _c, _d, element, _e, key, value, renderedValue, e_2_1, renderedBody, rpOption, res, jsonRes, error_1, requestError;
             var e_1, _f, e_2, _g;
             return __generator(this, function (_h) {
                 switch (_h.label) {
-                    case 0: return [4 /*yield*/, this.value.value(ctx)];
+                    case 0:
+                        if (!this.isVariable) return [3 /*break*/, 2];
+                        value = new Value(this.urlStr, this.liquid);
+                        return [4 /*yield*/, value.value(ctx)];
                     case 1:
                         urlResult = _h.sent();
                         url = String(urlResult);
+                        return [3 /*break*/, 3];
+                    case 2:
+                        url = this.urlStr;
+                        _h.label = 3;
+                    case 3:
                         if (!url) {
                             throw new Error("Invalid URL: ".concat(url));
                         }
@@ -6058,76 +6067,76 @@
                             'Content-Type': contentType,
                             'Accept': this.options.content_type
                         };
-                        if (!this.options.headers) return [3 /*break*/, 9];
-                        _h.label = 2;
-                    case 2:
-                        _h.trys.push([2, 7, 8, 9]);
-                        _a = __values(Object.keys(this.options.headers)), _b = _a.next();
-                        _h.label = 3;
-                    case 3:
-                        if (!!_b.done) return [3 /*break*/, 6];
-                        key = _b.value;
-                        return [4 /*yield*/, this.liquid.parseAndRender(this.options.headers[key], ctx.getAll())];
+                        if (!this.options.headers) return [3 /*break*/, 11];
+                        _h.label = 4;
                     case 4:
-                        headerValue = _h.sent();
-                        headers[key] = String(headerValue);
+                        _h.trys.push([4, 9, 10, 11]);
+                        _a = __values(Object.keys(this.options.headers)), _b = _a.next();
                         _h.label = 5;
                     case 5:
-                        _b = _a.next();
-                        return [3 /*break*/, 3];
-                    case 6: return [3 /*break*/, 9];
+                        if (!!_b.done) return [3 /*break*/, 8];
+                        key = _b.value;
+                        return [4 /*yield*/, this.liquid.parseAndRender(this.options.headers[key], ctx.getAll())];
+                    case 6:
+                        headerValue = _h.sent();
+                        headers[key] = String(headerValue);
+                        _h.label = 7;
                     case 7:
+                        _b = _a.next();
+                        return [3 /*break*/, 5];
+                    case 8: return [3 /*break*/, 11];
+                    case 9:
                         e_1_1 = _h.sent();
                         e_1 = { error: e_1_1 };
-                        return [3 /*break*/, 9];
-                    case 8:
+                        return [3 /*break*/, 11];
+                    case 10:
                         try {
                             if (_b && !_b.done && (_f = _a.return)) _f.call(_a);
                         }
                         finally { if (e_1) throw e_1.error; }
                         return [7 /*endfinally*/];
-                    case 9:
-                        body = this.options.body;
-                        if (!body) return [3 /*break*/, 20];
-                        if (!(method === 'POST' && (contentType === null || contentType === void 0 ? void 0 : contentType.toLowerCase().includes('application/json')))) return [3 /*break*/, 18];
-                        jsonBody = {};
-                        _h.label = 10;
-                    case 10:
-                        _h.trys.push([10, 15, 16, 17]);
-                        _c = __values(body.split('&')), _d = _c.next();
-                        _h.label = 11;
                     case 11:
-                        if (!!_d.done) return [3 /*break*/, 14];
+                        body = this.options.body;
+                        if (!body) return [3 /*break*/, 22];
+                        if (!(method === 'POST' && (contentType === null || contentType === void 0 ? void 0 : contentType.toLowerCase().includes('application/json')))) return [3 /*break*/, 20];
+                        jsonBody = {};
+                        _h.label = 12;
+                    case 12:
+                        _h.trys.push([12, 17, 18, 19]);
+                        _c = __values(body.split('&')), _d = _c.next();
+                        _h.label = 13;
+                    case 13:
+                        if (!!_d.done) return [3 /*break*/, 16];
                         element = _d.value;
                         _e = __read(element.split('='), 2), key = _e[0], value = _e[1];
                         return [4 /*yield*/, this.liquid.parseAndRender(value, ctx.getAll())];
-                    case 12:
+                    case 14:
                         renderedValue = _h.sent();
                         jsonBody[key] = String(renderedValue).replace(/(?:\r\n|\r|\n)/g, '');
-                        _h.label = 13;
-                    case 13:
-                        _d = _c.next();
-                        return [3 /*break*/, 11];
-                    case 14: return [3 /*break*/, 17];
+                        _h.label = 15;
                     case 15:
+                        _d = _c.next();
+                        return [3 /*break*/, 13];
+                    case 16: return [3 /*break*/, 19];
+                    case 17:
                         e_2_1 = _h.sent();
                         e_2 = { error: e_2_1 };
-                        return [3 /*break*/, 17];
-                    case 16:
+                        return [3 /*break*/, 19];
+                    case 18:
                         try {
                             if (_d && !_d.done && (_g = _c.return)) _g.call(_c);
                         }
                         finally { if (e_2) throw e_2.error; }
                         return [7 /*endfinally*/];
-                    case 17:
-                        body = JSON.stringify(jsonBody);
-                        return [3 /*break*/, 20];
-                    case 18: return [4 /*yield*/, this.liquid.parseAndRender(body, ctx.getAll())];
                     case 19:
+                        body = JSON.stringify(jsonBody);
+                        return [3 /*break*/, 22];
+                    case 20: return [4 /*yield*/, this.liquid.parseAndRender(body, ctx.getAll())];
+                    case 21:
                         renderedBody = _h.sent();
                         body = String(renderedBody);
-                        _h.label = 20;
-                    case 20:
+                        _h.label = 22;
+                    case 22:
                         rpOption = {
                             'resolveWithFullResponse': true,
                             method: method,
@@ -6141,11 +6150,11 @@
                             followAllRedirects: true,
                             simple: false
                         };
-                        _h.label = 21;
-                    case 21:
-                        _h.trys.push([21, 23, , 24]);
+                        _h.label = 23;
+                    case 23:
+                        _h.trys.push([23, 25, , 26]);
                         return [4 /*yield*/, rp(rpOption)];
-                    case 22:
+                    case 24:
                         res = (_h.sent());
                         if (res.statusCode >= 200 && res.statusCode <= 299) {
                             try {
@@ -6169,8 +6178,8 @@
                                 body: res.body
                             };
                         }
-                        return [3 /*break*/, 24];
-                    case 23:
+                        return [3 /*break*/, 26];
+                    case 25:
                         error_1 = _h.sent();
                         requestError = error_1;
                         console.error('Request Error:', requestError);
@@ -6178,8 +6187,8 @@
                             error: requestError.message || 'Request failed',
                             code: requestError.statusCode
                         };
-                        return [3 /*break*/, 24];
-                    case 24: return [2 /*return*/];
+                        return [3 /*break*/, 26];
+                    case 26: return [2 /*return*/];
                 }
             });
         };

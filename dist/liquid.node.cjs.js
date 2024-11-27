@@ -4440,8 +4440,8 @@ class connectedContent extends Tag {
     constructor(token, remainTokens, liquid) {
         super(token, remainTokens, liquid);
         this.options = {};
+        this.isVariable = false;
         this.tokenizer.skipBlank();
-        let urlStr;
         if (this.tokenizer.peek() === '{' && this.tokenizer.peek(1) === '{') {
             this.tokenizer.p += 2;
             this.tokenizer.skipBlank();
@@ -4456,7 +4456,8 @@ class connectedContent extends Tag {
             else {
                 throw new Error('unclosed handlebars expression');
             }
-            urlStr = urlToken.getText();
+            this.urlStr = urlToken.getText();
+            this.isVariable = true;
         }
         else {
             const begin = this.tokenizer.p;
@@ -4465,11 +4466,11 @@ class connectedContent extends Tag {
                 this.tokenizer.peek() !== ':') {
                 this.tokenizer.p++;
             }
-            urlStr = this.tokenizer.input.slice(begin, this.tokenizer.p);
-            if (!urlStr)
+            this.urlStr = this.tokenizer.input.slice(begin, this.tokenizer.p);
+            if (!this.urlStr)
                 throw new Error('missing URL');
+            this.isVariable = false;
         }
-        this.value = new Value(urlStr, this.liquid);
         this.tokenizer.skipBlank();
         const args = this.tokenizer.remaining().trim();
         if (args) {
@@ -4486,8 +4487,15 @@ class connectedContent extends Tag {
         }
     }
     *render(ctx) {
-        const urlResult = yield this.value.value(ctx);
-        const url = String(urlResult);
+        let url;
+        if (this.isVariable) {
+            const value = new Value(this.urlStr, this.liquid);
+            const urlResult = yield value.value(ctx);
+            url = String(urlResult);
+        }
+        else {
+            url = this.urlStr;
+        }
         if (!url) {
             throw new Error(`Invalid URL: ${url}`);
         }
