@@ -4443,150 +4443,134 @@ var number = {
 var brazeFilters = Object.assign(Object.assign(Object.assign(Object.assign(Object.assign({}, hash), json$1), url), encoding), number);
 
 const rp = rp_;
+const re = new RegExp(`(?:\\{\\{.*?\\}\\}|https?(?:[^\\s\\{\\}]+|\\{\\{.*?\\}\\})+)(\\s+(\\s|.)*)?$`);
 const headerRegex = new RegExp(`:headers\\s+(\\{(.|\\s)*?[^\\}]\\}([^\\}]|$))`);
-class connectedContent extends Tag {
-    constructor(token, remainTokens, liquid) {
-        super(token, remainTokens, liquid);
+var connectedContent = {
+    parse: function (tagToken) {
+        const match = tagToken.args.match(re);
+        if (!match) {
+            throw new Error(`illegal token ${tagToken.getText()}`);
+        }
+        this.url = match[1];
+        const options = match[2];
         this.options = {};
-        this.tokenizer.skipBlank();
-        // Check if we're dealing with a variable
-        let urlString;
-        if (this.tokenizer.peek() === '{' && this.tokenizer.peek(1) === '{') {
-            this.tokenizer.p += 2;
-            this.tokenizer.skipBlank();
-            const urlToken = this.tokenizer.readIdentifier();
-            urlString = urlToken.getText();
-            this.tokenizer.skipBlank();
-            if (this.tokenizer.peek() === '}' && this.tokenizer.peek(1) === '}') {
-                this.tokenizer.p += 2;
-            }
-        }
-        else {
-            // Direct URL case - read until space or colon
-            const begin = this.tokenizer.p;
-            while (this.tokenizer.p < this.tokenizer.N &&
-                this.tokenizer.input[this.tokenizer.p] !== ' ' &&
-                this.tokenizer.input[this.tokenizer.p] !== ':') {
-                this.tokenizer.p++;
-            }
-            urlString = this.tokenizer.input.slice(begin, this.tokenizer.p);
-        }
-        if (!urlString)
-            throw new Error('missing URL');
-        // Create a Value object for both variable and direct URL cases
-        this.value = new Value(urlString, this.liquid);
-        // Parse remaining options
-        this.tokenizer.skipBlank();
-        const args = this.tokenizer.remaining().trim();
-        if (args) {
-            const headersMatch = args.match(headerRegex);
+        if (options) {
+            const headersMatch = options.match(headerRegex);
             if (headersMatch != null) {
                 this.options.headers = JSON.parse(headersMatch[1]);
             }
-            const optionsStr = args.replace(headerRegex, '').trim();
-            const optionPairs = optionsStr.match(/:\w+\s+[^\s:]+/g) || [];
-            optionPairs.forEach(pair => {
-                const [key, value] = pair.slice(1).split(/\s+/);
-                this.options[key] = value;
+            options.replace(headerRegex, '').split(/\s+:/).forEach((optStr) => {
+                if (optStr === '')
+                    return;
+                const opts = optStr.split(/\s+/);
+                if (opts[0] === 'headers') {
+                    console.error('Headers JSON malformed. Check your headers value');
+                }
+                this.options[opts[0]] = opts.length > 1 ? opts[1] : true;
             });
         }
-    }
-    *render(ctx) {
-        const urlValue = yield this.value.value(ctx);
-        let url = String(urlValue);
-        // Rest of the render method stays the same
-        const method = (this.options.method || 'GET').toUpperCase();
-        let cacheTTL = 300 * 1000;
-        if (method !== 'GET') {
-            cacheTTL = 0;
-        }
-        else {
-            const cache = parseInt(this.options.cache, 10);
-            if (cache > 0) {
-                cacheTTL = cache * 1000;
-            }
-            else if (cache === 0) {
-                cacheTTL = 1;
-            }
-        }
-        const contentType = method === 'POST'
-            ? (this.options.content_type || 'application/x-www-form-urlencoded')
-            : this.options.content_type;
-        const headers = {
-            'User-Agent': 'brazejs-client',
-            'Content-Type': contentType,
-            'Accept': this.options.content_type
-        };
-        if (this.options.headers) {
-            for (const key of Object.keys(this.options.headers)) {
-                const headerValue = yield this.liquid.parseAndRender(this.options.headers[key], ctx.getAll());
-                headers[key] = String(headerValue);
-            }
-        }
-        let body = this.options.body;
-        if (body) {
-            if (method === 'POST' && (contentType === null || contentType === void 0 ? void 0 : contentType.toLowerCase().includes('application/json'))) {
-                const jsonBody = {};
-                for (const element of body.split('&')) {
-                    const [key, value] = element.split('=');
-                    const renderedValue = yield this.liquid.parseAndRender(value, ctx.getAll());
-                    jsonBody[key] = String(renderedValue).replace(/(?:\r\n|\r|\n)/g, '');
-                }
-                body = JSON.stringify(jsonBody);
+    },
+    render: function (ctx) {
+        return __awaiter(this, void 0, void 0, function* () {
+            const renderedUrl = yield this.liquid.parseAndRender(this.url, ctx.getAll());
+            // Rest of the render function remains identical to your original code
+            const method = (this.options.method || 'GET').toUpperCase();
+            let cacheTTL = 300 * 1000;
+            if (method !== 'GET') {
+                cacheTTL = 0;
             }
             else {
-                const renderedBody = yield this.liquid.parseAndRender(body, ctx.getAll());
-                body = String(renderedBody);
-            }
-        }
-        const rpOption = {
-            'resolveWithFullResponse': true,
-            method,
-            headers,
-            body,
-            uri: url,
-            cacheKey: url,
-            cacheTTL,
-            timeout: 2000,
-            followRedirect: true,
-            followAllRedirects: true,
-            simple: false
-        };
-        try {
-            const res = (yield rp(rpOption));
-            if (res.statusCode >= 200 && res.statusCode <= 299) {
-                try {
-                    if (this.options.content_type === 'application/json') {
-                        const jsonRes = JSON.parse(res.body);
-                        jsonRes.__http_status_code__ = res.statusCode;
-                        ctx.bottom()[this.options.save || 'connected'] = jsonRes;
-                    }
-                    else {
-                        ctx.bottom()[this.options.save || 'connected'] = res.body;
-                    }
+                const cache = parseInt(this.options.cache, 10);
+                if (cache > 0) {
+                    cacheTTL = cache * 1000;
                 }
-                catch (parseError) {
-                    console.error('JSON Parse Error:', parseError);
-                    ctx.bottom()[this.options.save || 'connected'] = res.body;
+                else if (cache === 0) {
+                    cacheTTL = 1;
                 }
             }
-            else {
-                ctx.bottom()[this.options.save || 'connected'] = {
-                    status: res.statusCode,
-                    body: res.body
+            let contentType = this.options.content_type;
+            if (method === 'POST') {
+                contentType = this.options.content_type || 'application/x-www-form-urlencoded';
+            }
+            const headers = {
+                'User-Agent': 'brazejs-client',
+                'Content-Type': contentType,
+                'Accept': this.options.content_type
+            };
+            if (this.options.headers) {
+                for (const key of Object.keys(this.options.headers)) {
+                    headers[key] = yield this.liquid.parseAndRender(this.options.headers[key], ctx.getAll());
+                }
+            }
+            let body = this.options.body;
+            if (this.options.body) {
+                if (method.toUpperCase() === 'POST' && contentType.toLowerCase().includes('application/json')) {
+                    const jsonBody = {};
+                    for (const element of this.options.body.split('&')) {
+                        const bodyElementSplit = element.split('=');
+                        jsonBody[bodyElementSplit[0]] = (yield this.liquid.parseAndRender(bodyElementSplit[1], ctx.getAll())).replace(/(?:\r\n|\r|\n|)/g, '');
+                    }
+                    body = JSON.stringify(jsonBody);
+                }
+                else {
+                    body = yield this.liquid.parseAndRender(this.options.body, ctx.getAll());
+                }
+            }
+            const rpOption = {
+                'resolveWithFullResponse': true,
+                method,
+                headers,
+                body,
+                uri: renderedUrl,
+                cacheKey: renderedUrl,
+                cacheTTL,
+                timeout: 2000
+            };
+            if (this.options.basic_auth) {
+                const secrets = ctx.environments['__secrets'];
+                if (!secrets) {
+                    throw new Error('No secrets defined in context!');
+                }
+                const secret = secrets[this.options.basic_auth];
+                if (!secret) {
+                    throw new Error(`No secret found for ${this.options.basic_auth}`);
+                }
+                if (!secret.username || !secret.password) {
+                    throw new Error(`No username or password set for ${this.options.basic_auth}`);
+                }
+                rpOption['auth'] = {
+                    user: secret.username,
+                    pass: secret.password
                 };
             }
-        }
-        catch (error) {
-            const requestError = error;
-            console.error('Request Error:', requestError);
-            ctx.bottom()[this.options.save || 'connected'] = {
-                error: requestError.message || 'Request failed',
-                code: requestError.statusCode
-            };
-        }
+            let res;
+            try {
+                res = yield rp(rpOption);
+            }
+            catch (e) {
+                res = e;
+            }
+            if (res.statusCode >= 200 && res.statusCode <= 299) {
+                try {
+                    const jsonRes = JSON.parse(res.body);
+                    jsonRes.__http_status_code__ = res.statusCode;
+                    ctx.environments[this.options.save || 'connected'] = jsonRes;
+                }
+                catch (error) {
+                    if (res.headers['content-type'] !== undefined && res.headers['content-type'].includes('json')) {
+                        console.error(`Failed to parse body as JSON: "${res.body}"`);
+                    }
+                    else {
+                        return res.body;
+                    }
+                }
+            }
+            else {
+                console.error(`${renderedUrl} responded with ${res.statusCode}:\n${res.body}`);
+            }
+        });
     }
-}
+};
 
 class AbortError extends Error {
     constructor(message) {
@@ -4596,10 +4580,10 @@ class AbortError extends Error {
     }
 }
 
-const re = new RegExp(`\\(('([^']*)'|"([^"]*)")?\\)`);
+const re$1 = new RegExp(`\\(('([^']*)'|"([^"]*)")?\\)`);
 var abortMessage = {
     parse: function (tagToken) {
-        const match = tagToken.args.match(re);
+        const match = tagToken.args.match(re$1);
         if (!match) {
             //@ts-ignore
             throw new Error(`illegal token ${tagToken.raw}`);

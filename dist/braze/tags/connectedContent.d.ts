@@ -1,7 +1,3 @@
-import { Liquid, TopLevelToken, TagToken, Context, Tag } from '../..';
-export default class extends Tag {
-    private value;
-    private options;
-    constructor(token: TagToken, remainTokens: TopLevelToken[], liquid: Liquid);
-    render(ctx: Context): Generator<unknown, void, unknown>;
-}
+import { TagImplOptions } from '../../template/tag-options-adapter';
+declare const _default: TagImplOptions;
+export default _default;
