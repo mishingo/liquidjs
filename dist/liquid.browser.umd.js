@@ -5972,7 +5972,7 @@
     var brazeFilters = __assign(__assign(__assign(__assign(__assign({}, hash), json$1), url), encoding), number);
 
     var rp = rp_;
-    var re = new RegExp("(?:\\{\\{.*?\\}\\}|https?(?:[^\\s\\{\\}]+|\\{\\{.*?\\}\\})+)(\\s+(\\s|.)*)?$");
+    var re = new RegExp("(\\{\\{.*?\\}\\}|https?://[^\\s]+)(\\s+(\\s|.)*)?$");
     var headerRegex = new RegExp(":headers\\s+(\\{(.|\\s)*?[^\\}]\\}([^\\}]|$))");
     var connectedContent = {
         parse: function (tagToken) {
@@ -6000,17 +6000,18 @@
                 });
             }
         },
-        render: function (ctx) {
+        render: function (ctx, emitter) {
+            var _a;
             return __awaiter(this, void 0, void 0, function () {
-                var renderedUrl, method, cacheTTL, cache, contentType, headers, _a, _b, key, _c, _d, e_1_1, body, jsonBody, _e, _f, element, bodyElementSplit, _g, _h, e_2_1, rpOption, secrets, secret, res, e_3, jsonRes;
-                var e_1, _j, e_2, _k;
-                return __generator(this, function (_l) {
-                    switch (_l.label) {
-                        case 0: return [4 /*yield*/, this.liquid.parseAndRender(this.url, ctx.getAll())
-                            // Rest of the render function remains identical to your original code
-                        ];
+                var renderedUrl, method, cacheTTL, cache, contentType, headers, _b, _c, key, _d, _e, e_1_1, body, jsonBody, _f, _g, element, bodyElementSplit, _h, _j, e_2_1, rpOption, secrets, secret, res, jsonRes, error_1, requestError;
+                var e_1, _k, e_2, _l;
+                return __generator(this, function (_m) {
+                    switch (_m.label) {
+                        case 0:
+                            _m.trys.push([0, 22, , 23]);
+                            return [4 /*yield*/, this.liquid.parseAndRender(this.url, ctx.getAll())];
                         case 1:
-                            renderedUrl = _l.sent();
+                            renderedUrl = _m.sent();
                             method = (this.options.method || 'GET').toUpperCase();
                             cacheTTL = 300 * 1000;
                             if (method !== 'GET') {
@@ -6035,31 +6036,31 @@
                                 'Accept': this.options.content_type
                             };
                             if (!this.options.headers) return [3 /*break*/, 9];
-                            _l.label = 2;
+                            _m.label = 2;
                         case 2:
-                            _l.trys.push([2, 7, 8, 9]);
-                            _a = __values(Object.keys(this.options.headers)), _b = _a.next();
-                            _l.label = 3;
+                            _m.trys.push([2, 7, 8, 9]);
+                            _b = __values(Object.keys(this.options.headers)), _c = _b.next();
+                            _m.label = 3;
                         case 3:
-                            if (!!_b.done) return [3 /*break*/, 6];
-                            key = _b.value;
-                            _c = headers;
-                            _d = key;
+                            if (!!_c.done) return [3 /*break*/, 6];
+                            key = _c.value;
+                            _d = headers;
+                            _e = key;
                             return [4 /*yield*/, this.liquid.parseAndRender(this.options.headers[key], ctx.getAll())];
                         case 4:
-                            _c[_d] = _l.sent();
-                            _l.label = 5;
+                            _d[_e] = _m.sent();
+                            _m.label = 5;
                         case 5:
-                            _b = _a.next();
+                            _c = _b.next();
                             return [3 /*break*/, 3];
                         case 6: return [3 /*break*/, 9];
                         case 7:
-                            e_1_1 = _l.sent();
+                            e_1_1 = _m.sent();
                             e_1 = { error: e_1_1 };
                             return [3 /*break*/, 9];
                         case 8:
                             try {
-                                if (_b && !_b.done && (_j = _a.return)) _j.call(_a);
+                                if (_c && !_c.done && (_k = _b.return)) _k.call(_b);
                             }
                             finally { if (e_1) throw e_1.error; }
                             return [7 /*endfinally*/];
@@ -6068,32 +6069,32 @@
                             if (!this.options.body) return [3 /*break*/, 20];
                             if (!(method.toUpperCase() === 'POST' && contentType.toLowerCase().includes('application/json'))) return [3 /*break*/, 18];
                             jsonBody = {};
-                            _l.label = 10;
+                            _m.label = 10;
                         case 10:
-                            _l.trys.push([10, 15, 16, 17]);
-                            _e = __values(this.options.body.split('&')), _f = _e.next();
-                            _l.label = 11;
+                            _m.trys.push([10, 15, 16, 17]);
+                            _f = __values(this.options.body.split('&')), _g = _f.next();
+                            _m.label = 11;
                         case 11:
-                            if (!!_f.done) return [3 /*break*/, 14];
-                            element = _f.value;
+                            if (!!_g.done) return [3 /*break*/, 14];
+                            element = _g.value;
                             bodyElementSplit = element.split('=');
-                            _g = jsonBody;
-                            _h = bodyElementSplit[0];
+                            _h = jsonBody;
+                            _j = bodyElementSplit[0];
                             return [4 /*yield*/, this.liquid.parseAndRender(bodyElementSplit[1], ctx.getAll())];
                         case 12:
-                            _g[_h] = (_l.sent()).replace(/(?:\r\n|\r|\n|)/g, '');
-                            _l.label = 13;
+                            _h[_j] = (_m.sent()).replace(/(?:\r\n|\r|\n|)/g, '');
+                            _m.label = 13;
                         case 13:
-                            _f = _e.next();
+                            _g = _f.next();
                             return [3 /*break*/, 11];
                         case 14: return [3 /*break*/, 17];
                         case 15:
-                            e_2_1 = _l.sent();
+                            e_2_1 = _m.sent();
                             e_2 = { error: e_2_1 };
                             return [3 /*break*/, 17];
                         case 16:
                             try {
-                                if (_f && !_f.done && (_k = _e.return)) _k.call(_e);
+                                if (_g && !_g.done && (_l = _f.return)) _l.call(_f);
                             }
                             finally { if (e_2) throw e_2.error; }
                             return [7 /*endfinally*/];
@@ -6102,8 +6103,8 @@
                             return [3 /*break*/, 20];
                         case 18: return [4 /*yield*/, this.liquid.parseAndRender(this.options.body, ctx.getAll())];
                         case 19:
-                            body = _l.sent();
-                            _l.label = 20;
+                            body = _m.sent();
+                            _m.label = 20;
                         case 20:
                             rpOption = {
                                 'resolveWithFullResponse': true,
@@ -6113,56 +6114,62 @@
                                 uri: renderedUrl,
                                 cacheKey: renderedUrl,
                                 cacheTTL: cacheTTL,
-                                timeout: 2000
+                                timeout: 2000,
+                                followRedirect: true,
+                                followAllRedirects: true,
+                                simple: false
                             };
                             if (this.options.basic_auth) {
                                 secrets = ctx.environments['__secrets'];
-                                if (!secrets) {
+                                if (!secrets)
                                     throw new Error('No secrets defined in context!');
-                                }
                                 secret = secrets[this.options.basic_auth];
-                                if (!secret) {
+                                if (!secret)
                                     throw new Error("No secret found for ".concat(this.options.basic_auth));
-                                }
-                                if (!secret.username || !secret.password) {
+                                if (!secret.username || !secret.password)
                                     throw new Error("No username or password set for ".concat(this.options.basic_auth));
-                                }
-                                rpOption['auth'] = {
-                                    user: secret.username,
-                                    pass: secret.password
-                                };
+                                rpOption['auth'] = { user: secret.username, pass: secret.password };
                             }
-                            _l.label = 21;
-                        case 21:
-                            _l.trys.push([21, 23, , 24]);
                             return [4 /*yield*/, rp(rpOption)];
-                        case 22:
-                            res = _l.sent();
-                            return [3 /*break*/, 24];
-                        case 23:
-                            e_3 = _l.sent();
-                            res = e_3;
-                            return [3 /*break*/, 24];
-                        case 24:
+                        case 21:
+                            res = _m.sent();
                             if (res.statusCode >= 200 && res.statusCode <= 299) {
                                 try {
                                     jsonRes = JSON.parse(res.body);
                                     jsonRes.__http_status_code__ = res.statusCode;
                                     ctx.environments[this.options.save || 'connected'] = jsonRes;
+                                    emitter.write('');
                                 }
                                 catch (error) {
-                                    if (res.headers['content-type'] !== undefined && res.headers['content-type'].includes('json')) {
+                                    if ((_a = res.headers['content-type']) === null || _a === void 0 ? void 0 : _a.includes('json')) {
                                         console.error("Failed to parse body as JSON: \"".concat(res.body, "\""));
+                                        ctx.environments[this.options.save || 'connected'] = { error: 'JSON parse error', body: res.body };
                                     }
                                     else {
-                                        return [2 /*return*/, res.body];
+                                        ctx.environments[this.options.save || 'connected'] = res.body;
                                     }
+                                    emitter.write('');
                                 }
                             }
                             else {
-                                console.error("".concat(renderedUrl, " responded with ").concat(res.statusCode, ":\n").concat(res.body));
+                                ctx.environments[this.options.save || 'connected'] = {
+                                    error: "Request failed with status ".concat(res.statusCode),
+                                    status: res.statusCode,
+                                    body: res.body
+                                };
+                                emitter.write('');
                             }
-                            return [2 /*return*/];
+                            return [3 /*break*/, 23];
+                        case 22:
+                            error_1 = _m.sent();
+                            requestError = error_1;
+                            ctx.environments[this.options.save || 'connected'] = {
+                                error: requestError.message || 'Request failed',
+                                status: requestError.statusCode
+                            };
+                            emitter.write('');
+                            return [3 /*break*/, 23];
+                        case 23: return [2 /*return*/];
                     }
                 });
             });
