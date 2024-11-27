@@ -30,36 +30,37 @@ export default class extends Tag {
     super(token, remainTokens, liquid)
     this.tokenizer.skipBlank()
 
-    // Read all characters until a space or colon for the URL
-    const begin = this.tokenizer.p
-    let inHandlebars = false
-
-    while (this.tokenizer.p < this.tokenizer.N) {
-      const char = this.tokenizer.peek()
+    if (this.tokenizer.peek() === '{' && this.tokenizer.peek(1) === '{') {
+      this.tokenizer.p += 2 
+      const urlToken = this.tokenizer.readIdentifier()
+      if (!urlToken || !urlToken.getText()) {
+        throw new Error('missing URL variable name')
+      }
       
-      if (!inHandlebars && (char === ' ' || char === ':')) {
-        break
-      }
-
-      if (char === '{' && this.tokenizer.peek(1) === '{') {
-        inHandlebars = true
+      this.tokenizer.skipBlank()
+      if (this.tokenizer.peek() === '}' && this.tokenizer.peek(1) === '}') {
         this.tokenizer.p += 2
-        continue
+      } else {
+        throw new Error('unclosed handlebars expression')
       }
-
-      if (char === '}' && this.tokenizer.peek(1) === '}') {
-        inHandlebars = false
-        this.tokenizer.p += 2
-        break
+      
+      this.url = `{{${urlToken.getText()}}}`
+    } else {
+      const begin = this.tokenizer.p
+      let end = begin
+      
+      while (end < this.tokenizer.N) {
+        const nextChar = this.tokenizer.input[end]
+        if (nextChar === ' ' || nextChar === ':') break
+        end++
       }
-
-      this.tokenizer.p++
+      
+      this.url = this.tokenizer.input.slice(begin, end)
+      this.tokenizer.p = end
     }
 
-    this.url = this.tokenizer.input.slice(begin, this.tokenizer.p).trim()
     if (!this.url) throw new Error('missing URL')
 
-    // Parse remaining options
     this.tokenizer.skipBlank()
     const args = this.tokenizer.remaining().trim()
     
@@ -80,18 +81,22 @@ export default class extends Tag {
   }
 
   * render(ctx: Context): Generator<unknown, void, unknown> {
-    let resolvedUrl = this.url
-
-    // If URL is wrapped in handlebars
-    if (resolvedUrl.startsWith('{{') && resolvedUrl.endsWith('}}')) {
-      const varName = resolvedUrl.slice(2, -2).trim()
+    let resolvedUrl: string
+    
+    if (this.url.startsWith('{{') && this.url.endsWith('}}')) {
+      const varName = this.url.slice(2, -2).trim()
       const value = new Value(varName, this.liquid)
       resolvedUrl = String(yield value.value(ctx))
+    } else {
+      resolvedUrl = this.url
     }
 
     if (!resolvedUrl) {
       throw new Error(`Invalid URL: ${resolvedUrl}`)
     }
+
+    console.log('DEBUG - URL:', this.url)
+    console.log('DEBUG - Resolved URL:', resolvedUrl)
 
     const method = (this.options.method || 'GET').toUpperCase()
     let cacheTTL = 300 * 1000
