@@ -5977,38 +5977,35 @@
         __extends(default_1, _super);
         function default_1(token, remainTokens, liquid) {
             var _this = _super.call(this, token, remainTokens, liquid) || this;
-            _this.url = '';
+            _this.inputString = '';
+            _this.isVariable = false;
             _this.options = {};
             _this.tokenizer.skipBlank();
+            // Check if we're dealing with a variable
             if (_this.tokenizer.peek() === '{' && _this.tokenizer.peek(1) === '{') {
+                _this.isVariable = true;
                 _this.tokenizer.p += 2;
+                _this.tokenizer.skipBlank();
                 var urlToken = _this.tokenizer.readIdentifier();
-                if (!urlToken || !urlToken.getText()) {
-                    throw new Error('missing URL variable name');
-                }
+                _this.inputString = urlToken.getText();
                 _this.tokenizer.skipBlank();
                 if (_this.tokenizer.peek() === '}' && _this.tokenizer.peek(1) === '}') {
                     _this.tokenizer.p += 2;
                 }
-                else {
-                    throw new Error('unclosed handlebars expression');
-                }
-                _this.url = "{{".concat(urlToken.getText(), "}}");
             }
             else {
+                // Direct URL case - read until space or colon
                 var begin = _this.tokenizer.p;
-                var end = begin;
-                while (end < _this.tokenizer.N) {
-                    var nextChar = _this.tokenizer.input[end];
-                    if (nextChar === ' ' || nextChar === ':')
-                        break;
-                    end++;
+                while (_this.tokenizer.p < _this.tokenizer.N &&
+                    _this.tokenizer.input[_this.tokenizer.p] !== ' ' &&
+                    _this.tokenizer.input[_this.tokenizer.p] !== ':') {
+                    _this.tokenizer.p++;
                 }
-                _this.url = _this.tokenizer.input.slice(begin, end);
-                _this.tokenizer.p = end;
+                _this.inputString = _this.tokenizer.input.slice(begin, _this.tokenizer.p);
             }
-            if (!_this.url)
+            if (!_this.inputString)
                 throw new Error('missing URL');
+            // Parse remaining options
             _this.tokenizer.skipBlank();
             var args = _this.tokenizer.remaining().trim();
             if (args) {
@@ -6026,28 +6023,22 @@
             return _this;
         }
         default_1.prototype.render = function (ctx) {
-            var resolvedUrl, varName, value, _a, method, cacheTTL, cache, contentType, headers, _b, _c, key, headerValue, e_1_1, body, jsonBody, _d, _e, element, _f, key, value, renderedValue, e_2_1, renderedBody, rpOption, res, jsonRes, error_1, requestError;
+            var url, value, _a, method, cacheTTL, cache, contentType, headers, _b, _c, key, headerValue, e_1_1, body, jsonBody, _d, _e, element, _f, key, value, renderedValue, e_2_1, renderedBody, rpOption, res, jsonRes, error_1, requestError;
             var e_1, _g, e_2, _h;
             return __generator(this, function (_j) {
                 switch (_j.label) {
                     case 0:
-                        if (!(this.url.startsWith('{{') && this.url.endsWith('}}'))) return [3 /*break*/, 2];
-                        varName = this.url.slice(2, -2).trim();
-                        value = new Value(varName, this.liquid);
+                        if (!this.isVariable) return [3 /*break*/, 2];
+                        value = new Value(this.inputString, this.liquid);
                         _a = String;
                         return [4 /*yield*/, value.value(ctx)];
                     case 1:
-                        resolvedUrl = _a.apply(void 0, [_j.sent()]);
+                        url = _a.apply(void 0, [_j.sent()]);
                         return [3 /*break*/, 3];
                     case 2:
-                        resolvedUrl = this.url;
+                        url = this.inputString;
                         _j.label = 3;
                     case 3:
-                        if (!resolvedUrl) {
-                            throw new Error("Invalid URL: ".concat(resolvedUrl));
-                        }
-                        console.log('DEBUG - URL:', this.url);
-                        console.log('DEBUG - Resolved URL:', resolvedUrl);
                         method = (this.options.method || 'GET').toUpperCase();
                         cacheTTL = 300 * 1000;
                         if (method !== 'GET') {
@@ -6145,8 +6136,8 @@
                             method: method,
                             headers: headers,
                             body: body,
-                            uri: resolvedUrl,
-                            cacheKey: resolvedUrl,
+                            uri: url,
+                            cacheKey: url,
                             cacheTTL: cacheTTL,
                             timeout: 2000,
                             followRedirect: true,

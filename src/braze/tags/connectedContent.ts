@@ -23,44 +23,39 @@ interface RequestError {
 }
 
 export default class extends Tag {
-  private url: string = ''
+  private inputString: string = ''
+  private isVariable: boolean = false
   private options: Record<string, any> = {}
 
   constructor(token: TagToken, remainTokens: TopLevelToken[], liquid: Liquid) {
     super(token, remainTokens, liquid)
     this.tokenizer.skipBlank()
 
+    // Check if we're dealing with a variable
     if (this.tokenizer.peek() === '{' && this.tokenizer.peek(1) === '{') {
-      this.tokenizer.p += 2 
+      this.isVariable = true
+      this.tokenizer.p += 2
+      this.tokenizer.skipBlank()
       const urlToken = this.tokenizer.readIdentifier()
-      if (!urlToken || !urlToken.getText()) {
-        throw new Error('missing URL variable name')
-      }
-      
+      this.inputString = urlToken.getText()
       this.tokenizer.skipBlank()
       if (this.tokenizer.peek() === '}' && this.tokenizer.peek(1) === '}') {
         this.tokenizer.p += 2
-      } else {
-        throw new Error('unclosed handlebars expression')
       }
-      
-      this.url = `{{${urlToken.getText()}}}`
     } else {
+      // Direct URL case - read until space or colon
       const begin = this.tokenizer.p
-      let end = begin
-      
-      while (end < this.tokenizer.N) {
-        const nextChar = this.tokenizer.input[end]
-        if (nextChar === ' ' || nextChar === ':') break
-        end++
+      while (this.tokenizer.p < this.tokenizer.N && 
+             this.tokenizer.input[this.tokenizer.p] !== ' ' && 
+             this.tokenizer.input[this.tokenizer.p] !== ':') {
+        this.tokenizer.p++
       }
-      
-      this.url = this.tokenizer.input.slice(begin, end)
-      this.tokenizer.p = end
+      this.inputString = this.tokenizer.input.slice(begin, this.tokenizer.p)
     }
 
-    if (!this.url) throw new Error('missing URL')
+    if (!this.inputString) throw new Error('missing URL')
 
+    // Parse remaining options
     this.tokenizer.skipBlank()
     const args = this.tokenizer.remaining().trim()
     
@@ -81,23 +76,15 @@ export default class extends Tag {
   }
 
   * render(ctx: Context): Generator<unknown, void, unknown> {
-    let resolvedUrl: string
-    
-    if (this.url.startsWith('{{') && this.url.endsWith('}}')) {
-      const varName = this.url.slice(2, -2).trim()
-      const value = new Value(varName, this.liquid)
-      resolvedUrl = String(yield value.value(ctx))
+    let url: string
+    if (this.isVariable) {
+      const value = new Value(this.inputString, this.liquid)
+      url = String(yield value.value(ctx))
     } else {
-      resolvedUrl = this.url
+      url = this.inputString
     }
 
-    if (!resolvedUrl) {
-      throw new Error(`Invalid URL: ${resolvedUrl}`)
-    }
-
-    console.log('DEBUG - URL:', this.url)
-    console.log('DEBUG - Resolved URL:', resolvedUrl)
-
+    // Rest of the render method stays the same
     const method = (this.options.method || 'GET').toUpperCase()
     let cacheTTL = 300 * 1000
     if (method !== 'GET') {
@@ -149,8 +136,8 @@ export default class extends Tag {
       method,
       headers,
       body,
-      uri: resolvedUrl,
-      cacheKey: resolvedUrl,
+      uri: url,
+      cacheKey: url,
       cacheTTL,
       timeout: 2000,
       followRedirect: true,
