@@ -5977,6 +5977,7 @@
         __extends(default_1, _super);
         function default_1(token, remainTokens, liquid) {
             var _this = _super.call(this, token, remainTokens, liquid) || this;
+            _this.urlStr = '';
             _this.options = {};
             _this.isVariable = false;
             _this.tokenizer.skipBlank();
@@ -5998,16 +5999,17 @@
                 _this.isVariable = true;
             }
             else {
-                var begin = _this.tokenizer.p;
-                while (_this.tokenizer.p < _this.tokenizer.N &&
-                    _this.tokenizer.peek() !== ' ' &&
-                    _this.tokenizer.peek() !== ':') {
+                var url = '';
+                while (_this.tokenizer.p < _this.tokenizer.N) {
+                    var char = _this.tokenizer.peek();
+                    if (char === ' ' || char === ':')
+                        break;
+                    url += char;
                     _this.tokenizer.p++;
                 }
-                _this.urlStr = _this.tokenizer.input.slice(begin, _this.tokenizer.p);
+                _this.urlStr = url;
                 if (!_this.urlStr)
                     throw new Error('missing URL');
-                _this.isVariable = false;
             }
             _this.tokenizer.skipBlank();
             var args = _this.tokenizer.remaining().trim();
@@ -6045,6 +6047,7 @@
                         if (!url) {
                             throw new Error("Invalid URL: ".concat(url));
                         }
+                        console.log('URL:', url); // Debug log
                         method = (this.options.method || 'GET').toUpperCase();
                         cacheTTL = 300 * 1000;
                         if (method !== 'GET') {

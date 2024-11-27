@@ -4439,6 +4439,7 @@ const headerRegex = new RegExp(`:headers\\s+(\\{(.|\\s)*?[^\\}]\\}([^\\}]|$))`);
 class connectedContent extends Tag {
     constructor(token, remainTokens, liquid) {
         super(token, remainTokens, liquid);
+        this.urlStr = '';
         this.options = {};
         this.isVariable = false;
         this.tokenizer.skipBlank();
@@ -4460,16 +4461,17 @@ class connectedContent extends Tag {
             this.isVariable = true;
         }
         else {
-            const begin = this.tokenizer.p;
-            while (this.tokenizer.p < this.tokenizer.N &&
-                this.tokenizer.peek() !== ' ' &&
-                this.tokenizer.peek() !== ':') {
+            let url = '';
+            while (this.tokenizer.p < this.tokenizer.N) {
+                const char = this.tokenizer.peek();
+                if (char === ' ' || char === ':')
+                    break;
+                url += char;
                 this.tokenizer.p++;
             }
-            this.urlStr = this.tokenizer.input.slice(begin, this.tokenizer.p);
+            this.urlStr = url;
             if (!this.urlStr)
                 throw new Error('missing URL');
-            this.isVariable = false;
         }
         this.tokenizer.skipBlank();
         const args = this.tokenizer.remaining().trim();
@@ -4499,6 +4501,7 @@ class connectedContent extends Tag {
         if (!url) {
             throw new Error(`Invalid URL: ${url}`);
         }
+        console.log('URL:', url); // Debug log
         const method = (this.options.method || 'GET').toUpperCase();
         let cacheTTL = 300 * 1000;
         if (method !== 'GET') {

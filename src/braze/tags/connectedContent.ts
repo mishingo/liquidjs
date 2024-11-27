@@ -23,7 +23,7 @@ interface RequestError {
 }
 
 export default class extends Tag {
-  private urlStr: string
+  private urlStr: string = ''
   private options: Record<string, any> = {}
   private isVariable: boolean = false
 
@@ -51,15 +51,16 @@ export default class extends Tag {
       this.urlStr = urlToken.getText()
       this.isVariable = true
     } else {
-      const begin = this.tokenizer.p
-      while (this.tokenizer.p < this.tokenizer.N && 
-             this.tokenizer.peek() !== ' ' && 
-             this.tokenizer.peek() !== ':') {
+      let url = ''
+      while (this.tokenizer.p < this.tokenizer.N) {
+        const char = this.tokenizer.peek()
+        if (char === ' ' || char === ':') break
+        url += char
         this.tokenizer.p++
       }
-      this.urlStr = this.tokenizer.input.slice(begin, this.tokenizer.p)
+      
+      this.urlStr = url
       if (!this.urlStr) throw new Error('missing URL')
-      this.isVariable = false
     }
 
     this.tokenizer.skipBlank()
@@ -94,6 +95,8 @@ export default class extends Tag {
     if (!url) {
       throw new Error(`Invalid URL: ${url}`)
     }
+    
+    console.log('URL:', url) // Debug log
 
     const method = (this.options.method || 'GET').toUpperCase()
     let cacheTTL = 300 * 1000
