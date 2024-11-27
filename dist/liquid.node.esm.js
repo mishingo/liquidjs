@@ -4454,17 +4454,15 @@ const headerRegex = new RegExp(`:headers\\s+(\\{(.|\\s)*?[^\\}]\\}([^\\}]|$))`);
 class connectedContent extends Tag {
     constructor(token, remainTokens, liquid) {
         super(token, remainTokens, liquid);
-        this.inputString = '';
-        this.isVariable = false;
         this.options = {};
         this.tokenizer.skipBlank();
         // Check if we're dealing with a variable
+        let urlString;
         if (this.tokenizer.peek() === '{' && this.tokenizer.peek(1) === '{') {
-            this.isVariable = true;
             this.tokenizer.p += 2;
             this.tokenizer.skipBlank();
             const urlToken = this.tokenizer.readIdentifier();
-            this.inputString = urlToken.getText();
+            urlString = urlToken.getText();
             this.tokenizer.skipBlank();
             if (this.tokenizer.peek() === '}' && this.tokenizer.peek(1) === '}') {
                 this.tokenizer.p += 2;
@@ -4478,10 +4476,12 @@ class connectedContent extends Tag {
                 this.tokenizer.input[this.tokenizer.p] !== ':') {
                 this.tokenizer.p++;
             }
-            this.inputString = this.tokenizer.input.slice(begin, this.tokenizer.p);
+            urlString = this.tokenizer.input.slice(begin, this.tokenizer.p);
         }
-        if (!this.inputString)
+        if (!urlString)
             throw new Error('missing URL');
+        // Create a Value object for both variable and direct URL cases
+        this.value = new Value(urlString, this.liquid);
         // Parse remaining options
         this.tokenizer.skipBlank();
         const args = this.tokenizer.remaining().trim();
@@ -4499,14 +4499,8 @@ class connectedContent extends Tag {
         }
     }
     *render(ctx) {
-        let url;
-        if (this.isVariable) {
-            const value = new Value(this.inputString, this.liquid);
-            url = String(yield value.value(ctx));
-        }
-        else {
-            url = this.inputString;
-        }
+        const urlValue = yield this.value.value(ctx);
+        let url = String(urlValue);
         // Rest of the render method stays the same
         const method = (this.options.method || 'GET').toUpperCase();
         let cacheTTL = 300 * 1000;

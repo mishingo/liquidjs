@@ -23,8 +23,7 @@ interface RequestError {
 }
 
 export default class extends Tag {
-  private inputString: string = ''
-  private isVariable: boolean = false
+  private value: Value
   private options: Record<string, any> = {}
 
   constructor(token: TagToken, remainTokens: TopLevelToken[], liquid: Liquid) {
@@ -32,12 +31,12 @@ export default class extends Tag {
     this.tokenizer.skipBlank()
 
     // Check if we're dealing with a variable
+    let urlString: string
     if (this.tokenizer.peek() === '{' && this.tokenizer.peek(1) === '{') {
-      this.isVariable = true
       this.tokenizer.p += 2
       this.tokenizer.skipBlank()
       const urlToken = this.tokenizer.readIdentifier()
-      this.inputString = urlToken.getText()
+      urlString = urlToken.getText()
       this.tokenizer.skipBlank()
       if (this.tokenizer.peek() === '}' && this.tokenizer.peek(1) === '}') {
         this.tokenizer.p += 2
@@ -50,10 +49,13 @@ export default class extends Tag {
              this.tokenizer.input[this.tokenizer.p] !== ':') {
         this.tokenizer.p++
       }
-      this.inputString = this.tokenizer.input.slice(begin, this.tokenizer.p)
+      urlString = this.tokenizer.input.slice(begin, this.tokenizer.p)
     }
 
-    if (!this.inputString) throw new Error('missing URL')
+    if (!urlString) throw new Error('missing URL')
+    
+    // Create a Value object for both variable and direct URL cases
+    this.value = new Value(urlString, this.liquid)
 
     // Parse remaining options
     this.tokenizer.skipBlank()
@@ -76,13 +78,8 @@ export default class extends Tag {
   }
 
   * render(ctx: Context): Generator<unknown, void, unknown> {
-    let url: string
-    if (this.isVariable) {
-      const value = new Value(this.inputString, this.liquid)
-      url = String(yield value.value(ctx))
-    } else {
-      url = this.inputString
-    }
+  const urlValue = yield this.value.value(ctx)
+  let url = String(urlValue)
 
     // Rest of the render method stays the same
     const method = (this.options.method || 'GET').toUpperCase()

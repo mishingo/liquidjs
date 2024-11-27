@@ -5977,17 +5977,15 @@
         __extends(default_1, _super);
         function default_1(token, remainTokens, liquid) {
             var _this = _super.call(this, token, remainTokens, liquid) || this;
-            _this.inputString = '';
-            _this.isVariable = false;
             _this.options = {};
             _this.tokenizer.skipBlank();
             // Check if we're dealing with a variable
+            var urlString;
             if (_this.tokenizer.peek() === '{' && _this.tokenizer.peek(1) === '{') {
-                _this.isVariable = true;
                 _this.tokenizer.p += 2;
                 _this.tokenizer.skipBlank();
                 var urlToken = _this.tokenizer.readIdentifier();
-                _this.inputString = urlToken.getText();
+                urlString = urlToken.getText();
                 _this.tokenizer.skipBlank();
                 if (_this.tokenizer.peek() === '}' && _this.tokenizer.peek(1) === '}') {
                     _this.tokenizer.p += 2;
@@ -6001,10 +5999,12 @@
                     _this.tokenizer.input[_this.tokenizer.p] !== ':') {
                     _this.tokenizer.p++;
                 }
-                _this.inputString = _this.tokenizer.input.slice(begin, _this.tokenizer.p);
+                urlString = _this.tokenizer.input.slice(begin, _this.tokenizer.p);
             }
-            if (!_this.inputString)
+            if (!urlString)
                 throw new Error('missing URL');
+            // Create a Value object for both variable and direct URL cases
+            _this.value = new Value(urlString, _this.liquid);
             // Parse remaining options
             _this.tokenizer.skipBlank();
             var args = _this.tokenizer.remaining().trim();
@@ -6023,22 +6023,14 @@
             return _this;
         }
         default_1.prototype.render = function (ctx) {
-            var url, value, _a, method, cacheTTL, cache, contentType, headers, _b, _c, key, headerValue, e_1_1, body, jsonBody, _d, _e, element, _f, key, value, renderedValue, e_2_1, renderedBody, rpOption, res, jsonRes, error_1, requestError;
-            var e_1, _g, e_2, _h;
-            return __generator(this, function (_j) {
-                switch (_j.label) {
-                    case 0:
-                        if (!this.isVariable) return [3 /*break*/, 2];
-                        value = new Value(this.inputString, this.liquid);
-                        _a = String;
-                        return [4 /*yield*/, value.value(ctx)];
+            var urlValue, url, method, cacheTTL, cache, contentType, headers, _a, _b, key, headerValue, e_1_1, body, jsonBody, _c, _d, element, _e, key, value, renderedValue, e_2_1, renderedBody, rpOption, res, jsonRes, error_1, requestError;
+            var e_1, _f, e_2, _g;
+            return __generator(this, function (_h) {
+                switch (_h.label) {
+                    case 0: return [4 /*yield*/, this.value.value(ctx)];
                     case 1:
-                        url = _a.apply(void 0, [_j.sent()]);
-                        return [3 /*break*/, 3];
-                    case 2:
-                        url = this.inputString;
-                        _j.label = 3;
-                    case 3:
+                        urlValue = _h.sent();
+                        url = String(urlValue);
                         method = (this.options.method || 'GET').toUpperCase();
                         cacheTTL = 300 * 1000;
                         if (method !== 'GET') {
@@ -6061,76 +6053,76 @@
                             'Content-Type': contentType,
                             'Accept': this.options.content_type
                         };
-                        if (!this.options.headers) return [3 /*break*/, 11];
-                        _j.label = 4;
-                    case 4:
-                        _j.trys.push([4, 9, 10, 11]);
-                        _b = __values(Object.keys(this.options.headers)), _c = _b.next();
-                        _j.label = 5;
-                    case 5:
-                        if (!!_c.done) return [3 /*break*/, 8];
-                        key = _c.value;
+                        if (!this.options.headers) return [3 /*break*/, 9];
+                        _h.label = 2;
+                    case 2:
+                        _h.trys.push([2, 7, 8, 9]);
+                        _a = __values(Object.keys(this.options.headers)), _b = _a.next();
+                        _h.label = 3;
+                    case 3:
+                        if (!!_b.done) return [3 /*break*/, 6];
+                        key = _b.value;
                         return [4 /*yield*/, this.liquid.parseAndRender(this.options.headers[key], ctx.getAll())];
-                    case 6:
-                        headerValue = _j.sent();
+                    case 4:
+                        headerValue = _h.sent();
                         headers[key] = String(headerValue);
-                        _j.label = 7;
+                        _h.label = 5;
+                    case 5:
+                        _b = _a.next();
+                        return [3 /*break*/, 3];
+                    case 6: return [3 /*break*/, 9];
                     case 7:
-                        _c = _b.next();
-                        return [3 /*break*/, 5];
-                    case 8: return [3 /*break*/, 11];
-                    case 9:
-                        e_1_1 = _j.sent();
+                        e_1_1 = _h.sent();
                         e_1 = { error: e_1_1 };
-                        return [3 /*break*/, 11];
-                    case 10:
+                        return [3 /*break*/, 9];
+                    case 8:
                         try {
-                            if (_c && !_c.done && (_g = _b.return)) _g.call(_b);
+                            if (_b && !_b.done && (_f = _a.return)) _f.call(_a);
                         }
                         finally { if (e_1) throw e_1.error; }
                         return [7 /*endfinally*/];
-                    case 11:
+                    case 9:
                         body = this.options.body;
-                        if (!body) return [3 /*break*/, 22];
-                        if (!(method === 'POST' && (contentType === null || contentType === void 0 ? void 0 : contentType.toLowerCase().includes('application/json')))) return [3 /*break*/, 20];
+                        if (!body) return [3 /*break*/, 20];
+                        if (!(method === 'POST' && (contentType === null || contentType === void 0 ? void 0 : contentType.toLowerCase().includes('application/json')))) return [3 /*break*/, 18];
                         jsonBody = {};
-                        _j.label = 12;
-                    case 12:
-                        _j.trys.push([12, 17, 18, 19]);
-                        _d = __values(body.split('&')), _e = _d.next();
-                        _j.label = 13;
-                    case 13:
-                        if (!!_e.done) return [3 /*break*/, 16];
-                        element = _e.value;
-                        _f = __read(element.split('='), 2), key = _f[0], value = _f[1];
+                        _h.label = 10;
+                    case 10:
+                        _h.trys.push([10, 15, 16, 17]);
+                        _c = __values(body.split('&')), _d = _c.next();
+                        _h.label = 11;
+                    case 11:
+                        if (!!_d.done) return [3 /*break*/, 14];
+                        element = _d.value;
+                        _e = __read(element.split('='), 2), key = _e[0], value = _e[1];
                         return [4 /*yield*/, this.liquid.parseAndRender(value, ctx.getAll())];
-                    case 14:
-                        renderedValue = _j.sent();
+                    case 12:
+                        renderedValue = _h.sent();
                         jsonBody[key] = String(renderedValue).replace(/(?:\r\n|\r|\n)/g, '');
-                        _j.label = 15;
+                        _h.label = 13;
+                    case 13:
+                        _d = _c.next();
+                        return [3 /*break*/, 11];
+                    case 14: return [3 /*break*/, 17];
                     case 15:
-                        _e = _d.next();
-                        return [3 /*break*/, 13];
-                    case 16: return [3 /*break*/, 19];
-                    case 17:
-                        e_2_1 = _j.sent();
+                        e_2_1 = _h.sent();
                         e_2 = { error: e_2_1 };
-                        return [3 /*break*/, 19];
-                    case 18:
+                        return [3 /*break*/, 17];
+                    case 16:
                         try {
-                            if (_e && !_e.done && (_h = _d.return)) _h.call(_d);
+                            if (_d && !_d.done && (_g = _c.return)) _g.call(_c);
                         }
                         finally { if (e_2) throw e_2.error; }
                         return [7 /*endfinally*/];
-                    case 19:
+                    case 17:
                         body = JSON.stringify(jsonBody);
-                        return [3 /*break*/, 22];
-                    case 20: return [4 /*yield*/, this.liquid.parseAndRender(body, ctx.getAll())];
-                    case 21:
-                        renderedBody = _j.sent();
+                        return [3 /*break*/, 20];
+                    case 18: return [4 /*yield*/, this.liquid.parseAndRender(body, ctx.getAll())];
+                    case 19:
+                        renderedBody = _h.sent();
                         body = String(renderedBody);
-                        _j.label = 22;
-                    case 22:
+                        _h.label = 20;
+                    case 20:
                         rpOption = {
                             'resolveWithFullResponse': true,
                             method: method,
@@ -6144,12 +6136,12 @@
                             followAllRedirects: true,
                             simple: false
                         };
-                        _j.label = 23;
-                    case 23:
-                        _j.trys.push([23, 25, , 26]);
+                        _h.label = 21;
+                    case 21:
+                        _h.trys.push([21, 23, , 24]);
                         return [4 /*yield*/, rp(rpOption)];
-                    case 24:
-                        res = (_j.sent());
+                    case 22:
+                        res = (_h.sent());
                         if (res.statusCode >= 200 && res.statusCode <= 299) {
                             try {
                                 if (this.options.content_type === 'application/json') {
@@ -6172,17 +6164,17 @@
                                 body: res.body
                             };
                         }
-                        return [3 /*break*/, 26];
-                    case 25:
-                        error_1 = _j.sent();
+                        return [3 /*break*/, 24];
+                    case 23:
+                        error_1 = _h.sent();
                         requestError = error_1;
                         console.error('Request Error:', requestError);
                         ctx.bottom()[this.options.save || 'connected'] = {
                             error: requestError.message || 'Request failed',
                             code: requestError.statusCode
                         };
-                        return [3 /*break*/, 26];
-                    case 26: return [2 /*return*/];
+                        return [3 /*break*/, 24];
+                    case 24: return [2 /*return*/];
                 }
             });
         };
