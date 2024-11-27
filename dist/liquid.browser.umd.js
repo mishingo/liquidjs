@@ -5977,40 +5977,33 @@
         __extends(default_1, _super);
         function default_1(token, remainTokens, liquid) {
             var _this = _super.call(this, token, remainTokens, liquid) || this;
-            _this.urlStr = '';
+            _this.url = '';
             _this.options = {};
-            _this.isVariable = false;
             _this.tokenizer.skipBlank();
-            if (_this.tokenizer.peek() === '{' && _this.tokenizer.peek(1) === '{') {
-                _this.tokenizer.p += 2;
-                _this.tokenizer.skipBlank();
-                var urlToken = _this.tokenizer.readIdentifier();
-                if (!urlToken || !urlToken.getText()) {
-                    throw new Error('missing URL variable name');
+            // Read all characters until a space or colon for the URL
+            var begin = _this.tokenizer.p;
+            var inHandlebars = false;
+            while (_this.tokenizer.p < _this.tokenizer.N) {
+                var char = _this.tokenizer.peek();
+                if (!inHandlebars && (char === ' ' || char === ':')) {
+                    break;
                 }
-                _this.tokenizer.skipBlank();
-                if (_this.tokenizer.peek() === '}' && _this.tokenizer.peek(1) === '}') {
+                if (char === '{' && _this.tokenizer.peek(1) === '{') {
+                    inHandlebars = true;
                     _this.tokenizer.p += 2;
+                    continue;
                 }
-                else {
-                    throw new Error('unclosed handlebars expression');
+                if (char === '}' && _this.tokenizer.peek(1) === '}') {
+                    inHandlebars = false;
+                    _this.tokenizer.p += 2;
+                    break;
                 }
-                _this.urlStr = urlToken.getText();
-                _this.isVariable = true;
+                _this.tokenizer.p++;
             }
-            else {
-                var url = '';
-                while (_this.tokenizer.p < _this.tokenizer.N) {
-                    var char = _this.tokenizer.peek();
-                    if (char === ' ' || char === ':')
-                        break;
-                    url += char;
-                    _this.tokenizer.p++;
-                }
-                _this.urlStr = url;
-                if (!_this.urlStr)
-                    throw new Error('missing URL');
-            }
+            _this.url = _this.tokenizer.input.slice(begin, _this.tokenizer.p).trim();
+            if (!_this.url)
+                throw new Error('missing URL');
+            // Parse remaining options
             _this.tokenizer.skipBlank();
             var args = _this.tokenizer.remaining().trim();
             if (args) {
@@ -6028,26 +6021,24 @@
             return _this;
         }
         default_1.prototype.render = function (ctx) {
-            var url, value, urlResult, method, cacheTTL, cache, contentType, headers, _a, _b, key, headerValue, e_1_1, body, jsonBody, _c, _d, element, _e, key, value, renderedValue, e_2_1, renderedBody, rpOption, res, jsonRes, error_1, requestError;
-            var e_1, _f, e_2, _g;
-            return __generator(this, function (_h) {
-                switch (_h.label) {
+            var resolvedUrl, varName, value, _a, method, cacheTTL, cache, contentType, headers, _b, _c, key, headerValue, e_1_1, body, jsonBody, _d, _e, element, _f, key, value, renderedValue, e_2_1, renderedBody, rpOption, res, jsonRes, error_1, requestError;
+            var e_1, _g, e_2, _h;
+            return __generator(this, function (_j) {
+                switch (_j.label) {
                     case 0:
-                        if (!this.isVariable) return [3 /*break*/, 2];
-                        value = new Value(this.urlStr, this.liquid);
+                        resolvedUrl = this.url;
+                        if (!(resolvedUrl.startsWith('{{') && resolvedUrl.endsWith('}}'))) return [3 /*break*/, 2];
+                        varName = resolvedUrl.slice(2, -2).trim();
+                        value = new Value(varName, this.liquid);
+                        _a = String;
                         return [4 /*yield*/, value.value(ctx)];
                     case 1:
-                        urlResult = _h.sent();
-                        url = String(urlResult);
-                        return [3 /*break*/, 3];
+                        resolvedUrl = _a.apply(void 0, [_j.sent()]);
+                        _j.label = 2;
                     case 2:
-                        url = this.urlStr;
-                        _h.label = 3;
-                    case 3:
-                        if (!url) {
-                            throw new Error("Invalid URL: ".concat(url));
+                        if (!resolvedUrl) {
+                            throw new Error("Invalid URL: ".concat(resolvedUrl));
                         }
-                        console.log('URL:', url); // Debug log
                         method = (this.options.method || 'GET').toUpperCase();
                         cacheTTL = 300 * 1000;
                         if (method !== 'GET') {
@@ -6070,95 +6061,95 @@
                             'Content-Type': contentType,
                             'Accept': this.options.content_type
                         };
-                        if (!this.options.headers) return [3 /*break*/, 11];
-                        _h.label = 4;
+                        if (!this.options.headers) return [3 /*break*/, 10];
+                        _j.label = 3;
+                    case 3:
+                        _j.trys.push([3, 8, 9, 10]);
+                        _b = __values(Object.keys(this.options.headers)), _c = _b.next();
+                        _j.label = 4;
                     case 4:
-                        _h.trys.push([4, 9, 10, 11]);
-                        _a = __values(Object.keys(this.options.headers)), _b = _a.next();
-                        _h.label = 5;
-                    case 5:
-                        if (!!_b.done) return [3 /*break*/, 8];
-                        key = _b.value;
+                        if (!!_c.done) return [3 /*break*/, 7];
+                        key = _c.value;
                         return [4 /*yield*/, this.liquid.parseAndRender(this.options.headers[key], ctx.getAll())];
-                    case 6:
-                        headerValue = _h.sent();
+                    case 5:
+                        headerValue = _j.sent();
                         headers[key] = String(headerValue);
-                        _h.label = 7;
-                    case 7:
-                        _b = _a.next();
-                        return [3 /*break*/, 5];
-                    case 8: return [3 /*break*/, 11];
-                    case 9:
-                        e_1_1 = _h.sent();
+                        _j.label = 6;
+                    case 6:
+                        _c = _b.next();
+                        return [3 /*break*/, 4];
+                    case 7: return [3 /*break*/, 10];
+                    case 8:
+                        e_1_1 = _j.sent();
                         e_1 = { error: e_1_1 };
-                        return [3 /*break*/, 11];
-                    case 10:
+                        return [3 /*break*/, 10];
+                    case 9:
                         try {
-                            if (_b && !_b.done && (_f = _a.return)) _f.call(_a);
+                            if (_c && !_c.done && (_g = _b.return)) _g.call(_b);
                         }
                         finally { if (e_1) throw e_1.error; }
                         return [7 /*endfinally*/];
-                    case 11:
+                    case 10:
                         body = this.options.body;
-                        if (!body) return [3 /*break*/, 22];
-                        if (!(method === 'POST' && (contentType === null || contentType === void 0 ? void 0 : contentType.toLowerCase().includes('application/json')))) return [3 /*break*/, 20];
+                        if (!body) return [3 /*break*/, 21];
+                        if (!(method === 'POST' && (contentType === null || contentType === void 0 ? void 0 : contentType.toLowerCase().includes('application/json')))) return [3 /*break*/, 19];
                         jsonBody = {};
-                        _h.label = 12;
+                        _j.label = 11;
+                    case 11:
+                        _j.trys.push([11, 16, 17, 18]);
+                        _d = __values(body.split('&')), _e = _d.next();
+                        _j.label = 12;
                     case 12:
-                        _h.trys.push([12, 17, 18, 19]);
-                        _c = __values(body.split('&')), _d = _c.next();
-                        _h.label = 13;
-                    case 13:
-                        if (!!_d.done) return [3 /*break*/, 16];
-                        element = _d.value;
-                        _e = __read(element.split('='), 2), key = _e[0], value = _e[1];
+                        if (!!_e.done) return [3 /*break*/, 15];
+                        element = _e.value;
+                        _f = __read(element.split('='), 2), key = _f[0], value = _f[1];
                         return [4 /*yield*/, this.liquid.parseAndRender(value, ctx.getAll())];
-                    case 14:
-                        renderedValue = _h.sent();
+                    case 13:
+                        renderedValue = _j.sent();
                         jsonBody[key] = String(renderedValue).replace(/(?:\r\n|\r|\n)/g, '');
-                        _h.label = 15;
-                    case 15:
-                        _d = _c.next();
-                        return [3 /*break*/, 13];
-                    case 16: return [3 /*break*/, 19];
-                    case 17:
-                        e_2_1 = _h.sent();
+                        _j.label = 14;
+                    case 14:
+                        _e = _d.next();
+                        return [3 /*break*/, 12];
+                    case 15: return [3 /*break*/, 18];
+                    case 16:
+                        e_2_1 = _j.sent();
                         e_2 = { error: e_2_1 };
-                        return [3 /*break*/, 19];
-                    case 18:
+                        return [3 /*break*/, 18];
+                    case 17:
                         try {
-                            if (_d && !_d.done && (_g = _c.return)) _g.call(_c);
+                            if (_e && !_e.done && (_h = _d.return)) _h.call(_d);
                         }
                         finally { if (e_2) throw e_2.error; }
                         return [7 /*endfinally*/];
-                    case 19:
+                    case 18:
                         body = JSON.stringify(jsonBody);
-                        return [3 /*break*/, 22];
-                    case 20: return [4 /*yield*/, this.liquid.parseAndRender(body, ctx.getAll())];
-                    case 21:
-                        renderedBody = _h.sent();
+                        return [3 /*break*/, 21];
+                    case 19: return [4 /*yield*/, this.liquid.parseAndRender(body, ctx.getAll())];
+                    case 20:
+                        renderedBody = _j.sent();
                         body = String(renderedBody);
-                        _h.label = 22;
-                    case 22:
+                        _j.label = 21;
+                    case 21:
                         rpOption = {
                             'resolveWithFullResponse': true,
                             method: method,
                             headers: headers,
                             body: body,
-                            uri: url,
-                            cacheKey: url,
+                            uri: resolvedUrl,
+                            cacheKey: resolvedUrl,
                             cacheTTL: cacheTTL,
                             timeout: 2000,
                             followRedirect: true,
                             followAllRedirects: true,
                             simple: false
                         };
-                        _h.label = 23;
-                    case 23:
-                        _h.trys.push([23, 25, , 26]);
+                        _j.label = 22;
+                    case 22:
+                        _j.trys.push([22, 24, , 25]);
                         return [4 /*yield*/, rp(rpOption)];
-                    case 24:
-                        res = (_h.sent());
+                    case 23:
+                        res = (_j.sent());
                         if (res.statusCode >= 200 && res.statusCode <= 299) {
                             try {
                                 if (this.options.content_type === 'application/json') {
@@ -6181,17 +6172,17 @@
                                 body: res.body
                             };
                         }
-                        return [3 /*break*/, 26];
-                    case 25:
-                        error_1 = _h.sent();
+                        return [3 /*break*/, 25];
+                    case 24:
+                        error_1 = _j.sent();
                         requestError = error_1;
                         console.error('Request Error:', requestError);
                         ctx.bottom()[this.options.save || 'connected'] = {
                             error: requestError.message || 'Request failed',
                             code: requestError.statusCode
                         };
-                        return [3 /*break*/, 26];
-                    case 26: return [2 /*return*/];
+                        return [3 /*break*/, 25];
+                    case 25: return [2 /*return*/];
                 }
             });
         };
