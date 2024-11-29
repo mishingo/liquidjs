@@ -5976,38 +5976,33 @@
     var inflate = util.promisify(zlib.inflate);
     var re = new RegExp("(\\{\\{.*?\\}\\}|https?://[^\\s]+)(\\s+(\\s|.)*)?$");
     var headerRegex = new RegExp(":headers\\s+(\\{(.|\\s)*?[^\\}]\\}([^\\}]|$))");
-    function decompressResponse(body, encoding) {
+    // Helper function to detect if content is gzipped
+    function isGzipped(buffer) {
+        return buffer[0] === 0x1f && buffer[1] === 0x8b && buffer[2] === 0x08;
+    }
+    function handleResponse(body, contentEncoding, contentType) {
         return __awaiter(this, void 0, void 0, function () {
-            var buffer, _a, error_1;
-            return __generator(this, function (_b) {
-                switch (_b.label) {
+            var decompressed, error_1;
+            return __generator(this, function (_a) {
+                switch (_a.label) {
                     case 0:
-                        // If body is already an object, return it stringified
-                        if (typeof body === 'object' && !Buffer.isBuffer(body)) {
-                            return [2 /*return*/, JSON.stringify(body)];
-                        }
-                        _b.label = 1;
+                        if (!Buffer.isBuffer(body)) return [3 /*break*/, 5];
+                        if (!(contentEncoding === 'gzip' || isGzipped(body))) return [3 /*break*/, 4];
+                        _a.label = 1;
                     case 1:
-                        _b.trys.push([1, 8, , 9]);
-                        buffer = Buffer.isBuffer(body) ? body : Buffer.from(body);
-                        _a = encoding.toLowerCase();
-                        switch (_a) {
-                            case 'gzip': return [3 /*break*/, 2];
-                            case 'deflate': return [3 /*break*/, 4];
-                        }
-                        return [3 /*break*/, 6];
-                    case 2: return [4 /*yield*/, gunzip(buffer)];
-                    case 3: return [2 /*return*/, (_b.sent()).toString()];
-                    case 4: return [4 /*yield*/, inflate(buffer)];
-                    case 5: return [2 /*return*/, (_b.sent()).toString()];
-                    case 6: return [2 /*return*/, buffer.toString()];
-                    case 7: return [3 /*break*/, 9];
-                    case 8:
-                        error_1 = _b.sent();
-                        console.error("Decompression failed: ".concat(error_1));
-                        // If decompression fails, return the original body stringified
-                        return [2 /*return*/, typeof body === 'object' ? JSON.stringify(body) : String(body)];
-                    case 9: return [2 /*return*/];
+                        _a.trys.push([1, 3, , 4]);
+                        return [4 /*yield*/, gunzip(body)];
+                    case 2:
+                        decompressed = _a.sent();
+                        return [2 /*return*/, decompressed.toString('utf-8')];
+                    case 3:
+                        error_1 = _a.sent();
+                        console.error('Gunzip decompression failed:', error_1);
+                        return [2 /*return*/, body.toString('utf-8')];
+                    case 4: return [2 /*return*/, body.toString('utf-8')];
+                    case 5: 
+                    // Handle string content
+                    return [2 /*return*/, String(body)];
                 }
             });
         });
@@ -6041,7 +6036,7 @@
         render: function (ctx, emitter) {
             var _a;
             return __awaiter(this, void 0, void 0, function () {
-                var renderedUrl, method, cacheTTL, cache, contentType, headers, _b, _c, key, _d, _e, e_1_1, body, jsonBody, _f, _g, element, bodyElementSplit, _h, _j, e_2_1, rpOption, secrets, secret, res, jsonRes_1, decompressedBody, jsonRes, error_2, error_3, requestError;
+                var renderedUrl, method, cacheTTL, cache, contentType, headers, _b, _c, key, _d, _e, e_1_1, body, jsonBody, _f, _g, element, bodyElementSplit, _h, _j, e_2_1, rpOption, secrets, secret, res, responseText, jsonRes, error_2, error_3, requestError;
                 var e_1, _k, e_2, _l;
                 return __generator(this, function (_m) {
                     switch (_m.label) {
@@ -6072,7 +6067,7 @@
                                 'User-Agent': 'brazejs-client',
                                 'Content-Type': contentType,
                                 'Accept': this.options.content_type,
-                                'Accept-Encoding': 'gzip, deflate'
+                                'Accept-Encoding': 'gzip'
                             };
                             if (!this.options.headers) return [3 /*break*/, 9];
                             _m.label = 2;
@@ -6157,7 +6152,7 @@
                                 followRedirect: true,
                                 followAllRedirects: true,
                                 simple: false,
-                                json: true // Let request-promise handle JSON parsing
+                                encoding: null // Important: Get response as Buffer
                             };
                             if (this.options.basic_auth) {
                                 secrets = ctx.environments['__secrets'];
@@ -6177,34 +6172,25 @@
                             _m.label = 22;
                         case 22:
                             _m.trys.push([22, 24, , 25]);
-                            // If the response is already a parsed object
-                            if (typeof res.body === 'object' && res.body !== null) {
-                                jsonRes_1 = res.body;
-                                jsonRes_1.__http_status_code__ = res.statusCode;
-                                ctx.environments[this.options.save || 'connected'] = jsonRes_1;
-                                emitter.write('');
-                                return [2 /*return*/];
-                            }
-                            return [4 /*yield*/, decompressResponse(res.body, res.headers['content-encoding'] || 'identity')];
+                            return [4 /*yield*/, handleResponse(res.body, res.headers['content-encoding'])];
                         case 23:
-                            decompressedBody = _m.sent();
-                            jsonRes = JSON.parse(decompressedBody);
+                            responseText = _m.sent();
+                            jsonRes = JSON.parse(responseText);
                             jsonRes.__http_status_code__ = res.statusCode;
                             ctx.environments[this.options.save || 'connected'] = jsonRes;
                             emitter.write('');
                             return [3 /*break*/, 25];
                         case 24:
                             error_2 = _m.sent();
+                            console.error('Response handling error:', error_2);
                             if ((_a = res.headers['content-type']) === null || _a === void 0 ? void 0 : _a.includes('json')) {
-                                console.error("Failed to parse body as JSON: \"".concat(JSON.stringify(res.body), "\""));
                                 ctx.environments[this.options.save || 'connected'] = {
                                     error: 'JSON parse error',
-                                    body: typeof res.body === 'object' ? JSON.stringify(res.body) : String(res.body)
+                                    body: res.body.toString('base64') // Safely encode binary data
                                 };
                             }
                             else {
-                                ctx.environments[this.options.save || 'connected'] = typeof res.body === 'object' ?
-                                    JSON.stringify(res.body) : String(res.body);
+                                ctx.environments[this.options.save || 'connected'] = res.body.toString('utf-8');
                             }
                             emitter.write('');
                             return [3 /*break*/, 25];
@@ -6213,7 +6199,7 @@
                             ctx.environments[this.options.save || 'connected'] = {
                                 error: "Request failed with status ".concat(res.statusCode),
                                 status: res.statusCode,
-                                body: typeof res.body === 'object' ? JSON.stringify(res.body) : String(res.body)
+                                body: res.body.toString('utf-8')
                             };
                             emitter.write('');
                             _m.label = 27;

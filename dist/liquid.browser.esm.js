@@ -4449,28 +4449,29 @@ const gunzip = promisify(gunzip$1);
 const inflate = promisify(inflate$1);
 const re = new RegExp(`(\\{\\{.*?\\}\\}|https?://[^\\s]+)(\\s+(\\s|.)*)?$`);
 const headerRegex = new RegExp(`:headers\\s+(\\{(.|\\s)*?[^\\}]\\}([^\\}]|$))`);
-function decompressResponse(body, encoding) {
+// Helper function to detect if content is gzipped
+function isGzipped(buffer) {
+    return buffer[0] === 0x1f && buffer[1] === 0x8b && buffer[2] === 0x08;
+}
+function handleResponse(body, contentEncoding, contentType) {
     return __awaiter(this, void 0, void 0, function* () {
-        // If body is already an object, return it stringified
-        if (typeof body === 'object' && !Buffer.isBuffer(body)) {
-            return JSON.stringify(body);
-        }
-        try {
-            const buffer = Buffer.isBuffer(body) ? body : Buffer.from(body);
-            switch (encoding.toLowerCase()) {
-                case 'gzip':
-                    return (yield gunzip(buffer)).toString();
-                case 'deflate':
-                    return (yield inflate(buffer)).toString();
-                default:
-                    return buffer.toString();
+        // Handle binary buffer
+        if (Buffer.isBuffer(body)) {
+            // Check for gzipped content either by header or content inspection
+            if (contentEncoding === 'gzip' || isGzipped(body)) {
+                try {
+                    const decompressed = yield gunzip(body);
+                    return decompressed.toString('utf-8');
+                }
+                catch (error) {
+                    console.error('Gunzip decompression failed:', error);
+                    return body.toString('utf-8');
+                }
             }
+            return body.toString('utf-8');
         }
-        catch (error) {
-            console.error(`Decompression failed: ${error}`);
-            // If decompression fails, return the original body stringified
-            return typeof body === 'object' ? JSON.stringify(body) : String(body);
-        }
+        // Handle string content
+        return String(body);
     });
 }
 var connectedContent = {
@@ -4525,7 +4526,7 @@ var connectedContent = {
                     'User-Agent': 'brazejs-client',
                     'Content-Type': contentType,
                     'Accept': this.options.content_type,
-                    'Accept-Encoding': 'gzip, deflate'
+                    'Accept-Encoding': 'gzip'
                 };
                 if (this.options.headers) {
                     for (const key of Object.keys(this.options.headers)) {
@@ -4558,7 +4559,7 @@ var connectedContent = {
                     followRedirect: true,
                     followAllRedirects: true,
                     simple: false,
-                    json: true // Let request-promise handle JSON parsing
+                    encoding: null // Important: Get response as Buffer
                 };
                 if (this.options.basic_auth) {
                     const secrets = ctx.environments['__secrets'];
@@ -4574,32 +4575,22 @@ var connectedContent = {
                 const res = yield rp(rpOption);
                 if (res.statusCode >= 200 && res.statusCode <= 299) {
                     try {
-                        // If the response is already a parsed object
-                        if (typeof res.body === 'object' && res.body !== null) {
-                            const jsonRes = res.body;
-                            jsonRes.__http_status_code__ = res.statusCode;
-                            ctx.environments[this.options.save || 'connected'] = jsonRes;
-                            emitter.write('');
-                            return;
-                        }
-                        // If we need to decompress and parse
-                        const decompressedBody = yield decompressResponse(res.body, res.headers['content-encoding'] || 'identity');
-                        const jsonRes = JSON.parse(decompressedBody);
+                        const responseText = yield handleResponse(res.body, res.headers['content-encoding'], res.headers['content-type']);
+                        const jsonRes = JSON.parse(responseText);
                         jsonRes.__http_status_code__ = res.statusCode;
                         ctx.environments[this.options.save || 'connected'] = jsonRes;
                         emitter.write('');
                     }
                     catch (error) {
+                        console.error('Response handling error:', error);
                         if ((_a = res.headers['content-type']) === null || _a === void 0 ? void 0 : _a.includes('json')) {
-                            console.error(`Failed to parse body as JSON: "${JSON.stringify(res.body)}"`);
                             ctx.environments[this.options.save || 'connected'] = {
                                 error: 'JSON parse error',
-                                body: typeof res.body === 'object' ? JSON.stringify(res.body) : String(res.body)
+                                body: res.body.toString('base64') // Safely encode binary data
                             };
                         }
                         else {
-                            ctx.environments[this.options.save || 'connected'] = typeof res.body === 'object' ?
-                                JSON.stringify(res.body) : String(res.body);
+                            ctx.environments[this.options.save || 'connected'] = res.body.toString('utf-8');
                         }
                         emitter.write('');
                     }
@@ -4608,7 +4599,7 @@ var connectedContent = {
                     ctx.environments[this.options.save || 'connected'] = {
                         error: `Request failed with status ${res.statusCode}`,
                         status: res.statusCode,
-                        body: typeof res.body === 'object' ? JSON.stringify(res.body) : String(res.body)
+                        body: res.body.toString('utf-8')
                     };
                     emitter.write('');
                 }
