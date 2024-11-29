@@ -4443,19 +4443,25 @@ const inflate = util.promisify(zlib.inflate);
 const re = new RegExp(`(\\{\\{.*?\\}\\}|https?://[^\\s]+)(\\s+(\\s|.)*)?$`);
 const headerRegex = new RegExp(`:headers\\s+(\\{(.|\\s)*?[^\\}]\\}([^\\}]|$))`);
 async function decompressResponse(body, encoding) {
+    // If body is already an object, return it stringified
+    if (typeof body === 'object' && !Buffer.isBuffer(body)) {
+        return JSON.stringify(body);
+    }
     try {
+        const buffer = Buffer.isBuffer(body) ? body : Buffer.from(body);
         switch (encoding.toLowerCase()) {
             case 'gzip':
-                return (await gunzip(body)).toString();
+                return (await gunzip(buffer)).toString();
             case 'deflate':
-                return (await inflate(body)).toString();
+                return (await inflate(buffer)).toString();
             default:
-                return body.toString();
+                return buffer.toString();
         }
     }
     catch (error) {
         console.error(`Decompression failed: ${error}`);
-        return body.toString();
+        // If decompression fails, return the original body stringified
+        return typeof body === 'object' ? JSON.stringify(body) : String(body);
     }
 }
 var connectedContent = {
@@ -4508,7 +4514,7 @@ var connectedContent = {
                 'User-Agent': 'brazejs-client',
                 'Content-Type': contentType,
                 'Accept': this.options.content_type,
-                'Accept-Encoding': 'gzip, deflate' // Explicitly accept compressed responses
+                'Accept-Encoding': 'gzip, deflate'
             };
             if (this.options.headers) {
                 for (const key of Object.keys(this.options.headers)) {
@@ -4541,7 +4547,7 @@ var connectedContent = {
                 followRedirect: true,
                 followAllRedirects: true,
                 simple: false,
-                encoding: null // Get response as Buffer instead of string
+                json: true // Let request-promise handle JSON parsing
             };
             if (this.options.basic_auth) {
                 const secrets = ctx.environments['__secrets'];
@@ -4557,6 +4563,15 @@ var connectedContent = {
             const res = await rp(rpOption);
             if (res.statusCode >= 200 && res.statusCode <= 299) {
                 try {
+                    // If the response is already a parsed object
+                    if (typeof res.body === 'object' && res.body !== null) {
+                        const jsonRes = res.body;
+                        jsonRes.__http_status_code__ = res.statusCode;
+                        ctx.environments[this.options.save || 'connected'] = jsonRes;
+                        emitter.write('');
+                        return;
+                    }
+                    // If we need to decompress and parse
                     const decompressedBody = await decompressResponse(res.body, res.headers['content-encoding'] || 'identity');
                     const jsonRes = JSON.parse(decompressedBody);
                     jsonRes.__http_status_code__ = res.statusCode;
@@ -4565,14 +4580,15 @@ var connectedContent = {
                 }
                 catch (error) {
                     if (res.headers['content-type']?.includes('json')) {
-                        console.error(`Failed to parse body as JSON: "${res.body}"`);
+                        console.error(`Failed to parse body as JSON: "${JSON.stringify(res.body)}"`);
                         ctx.environments[this.options.save || 'connected'] = {
                             error: 'JSON parse error',
-                            body: res.body.toString()
+                            body: typeof res.body === 'object' ? JSON.stringify(res.body) : String(res.body)
                         };
                     }
                     else {
-                        ctx.environments[this.options.save || 'connected'] = res.body.toString();
+                        ctx.environments[this.options.save || 'connected'] = typeof res.body === 'object' ?
+                            JSON.stringify(res.body) : String(res.body);
                     }
                     emitter.write('');
                 }
@@ -4581,7 +4597,7 @@ var connectedContent = {
                 ctx.environments[this.options.save || 'connected'] = {
                     error: `Request failed with status ${res.statusCode}`,
                     status: res.statusCode,
-                    body: res.body.toString()
+                    body: typeof res.body === 'object' ? JSON.stringify(res.body) : String(res.body)
                 };
                 emitter.write('');
             }
