@@ -8,6 +8,8 @@ import { sep, extname, resolve as resolve$1, dirname as dirname$1, join as join$
 import { statSync, readFileSync as readFileSync$1, stat, readFile as readFile$1 } from 'fs';
 import { createHash, createHmac } from 'crypto';
 import * as rp_ from 'request-promise-cache';
+import { gunzip as gunzip$1, inflate as inflate$1 } from 'zlib';
+import { promisify as promisify$1 } from 'util';
 
 class Token {
     constructor(kind, input, begin, end, file) {
@@ -4450,8 +4452,28 @@ var number = {
 var brazeFilters = Object.assign(Object.assign(Object.assign(Object.assign(Object.assign({}, hash), json$1), url), encoding), number);
 
 const rp = rp_;
+const gunzip = promisify$1(gunzip$1);
+const inflate = promisify$1(inflate$1);
 const re = new RegExp(`(\\{\\{.*?\\}\\}|https?://[^\\s]+)(\\s+(\\s|.)*)?$`);
 const headerRegex = new RegExp(`:headers\\s+(\\{(.|\\s)*?[^\\}]\\}([^\\}]|$))`);
+function decompressResponse(body, encoding) {
+    return __awaiter(this, void 0, void 0, function* () {
+        try {
+            switch (encoding.toLowerCase()) {
+                case 'gzip':
+                    return (yield gunzip(body)).toString();
+                case 'deflate':
+                    return (yield inflate(body)).toString();
+                default:
+                    return body.toString();
+            }
+        }
+        catch (error) {
+            console.error(`Decompression failed: ${error}`);
+            return body.toString();
+        }
+    });
+}
 var connectedContent = {
     parse: function (tagToken) {
         const match = tagToken.args.match(re);
@@ -4503,7 +4525,8 @@ var connectedContent = {
                 const headers = {
                     'User-Agent': 'brazejs-client',
                     'Content-Type': contentType,
-                    'Accept': this.options.content_type
+                    'Accept': this.options.content_type,
+                    'Accept-Encoding': 'gzip, deflate' // Explicitly accept compressed responses
                 };
                 if (this.options.headers) {
                     for (const key of Object.keys(this.options.headers)) {
@@ -4535,7 +4558,8 @@ var connectedContent = {
                     timeout: 2000,
                     followRedirect: true,
                     followAllRedirects: true,
-                    simple: false
+                    simple: false,
+                    encoding: null // Get response as Buffer instead of string
                 };
                 if (this.options.basic_auth) {
                     const secrets = ctx.environments['__secrets'];
@@ -4551,7 +4575,8 @@ var connectedContent = {
                 const res = yield rp(rpOption);
                 if (res.statusCode >= 200 && res.statusCode <= 299) {
                     try {
-                        const jsonRes = JSON.parse(res.body);
+                        const decompressedBody = yield decompressResponse(res.body, res.headers['content-encoding'] || 'identity');
+                        const jsonRes = JSON.parse(decompressedBody);
                         jsonRes.__http_status_code__ = res.statusCode;
                         ctx.environments[this.options.save || 'connected'] = jsonRes;
                         emitter.write('');
@@ -4559,10 +4584,13 @@ var connectedContent = {
                     catch (error) {
                         if ((_a = res.headers['content-type']) === null || _a === void 0 ? void 0 : _a.includes('json')) {
                             console.error(`Failed to parse body as JSON: "${res.body}"`);
-                            ctx.environments[this.options.save || 'connected'] = { error: 'JSON parse error', body: res.body };
+                            ctx.environments[this.options.save || 'connected'] = {
+                                error: 'JSON parse error',
+                                body: res.body.toString()
+                            };
                         }
                         else {
-                            ctx.environments[this.options.save || 'connected'] = res.body;
+                            ctx.environments[this.options.save || 'connected'] = res.body.toString();
                         }
                         emitter.write('');
                     }
@@ -4571,7 +4599,7 @@ var connectedContent = {
                     ctx.environments[this.options.save || 'connected'] = {
                         error: `Request failed with status ${res.statusCode}`,
                         status: res.statusCode,
-                        body: res.body
+                        body: res.body.toString()
                     };
                     emitter.write('');
                 }

@@ -12,6 +12,8 @@ var path = require('path');
 var fs$1 = require('fs');
 var crypto = require('crypto');
 var rp_ = require('request-promise-cache');
+var zlib = require('zlib');
+var util = require('util');
 
 class Token {
     constructor(kind, input, begin, end, file) {
@@ -4436,8 +4438,26 @@ var brazeFilters = { ...hash, ...json$1, ...url, ...encoding, ...number };
 
 // @ts-ignore
 const rp = rp_;
+const gunzip = util.promisify(zlib.gunzip);
+const inflate = util.promisify(zlib.inflate);
 const re = new RegExp(`(\\{\\{.*?\\}\\}|https?://[^\\s]+)(\\s+(\\s|.)*)?$`);
 const headerRegex = new RegExp(`:headers\\s+(\\{(.|\\s)*?[^\\}]\\}([^\\}]|$))`);
+async function decompressResponse(body, encoding) {
+    try {
+        switch (encoding.toLowerCase()) {
+            case 'gzip':
+                return (await gunzip(body)).toString();
+            case 'deflate':
+                return (await inflate(body)).toString();
+            default:
+                return body.toString();
+        }
+    }
+    catch (error) {
+        console.error(`Decompression failed: ${error}`);
+        return body.toString();
+    }
+}
 var connectedContent = {
     parse: function (tagToken) {
         const match = tagToken.args.match(re);
@@ -4487,7 +4507,8 @@ var connectedContent = {
             const headers = {
                 'User-Agent': 'brazejs-client',
                 'Content-Type': contentType,
-                'Accept': this.options.content_type
+                'Accept': this.options.content_type,
+                'Accept-Encoding': 'gzip, deflate' // Explicitly accept compressed responses
             };
             if (this.options.headers) {
                 for (const key of Object.keys(this.options.headers)) {
@@ -4519,7 +4540,8 @@ var connectedContent = {
                 timeout: 2000,
                 followRedirect: true,
                 followAllRedirects: true,
-                simple: false
+                simple: false,
+                encoding: null // Get response as Buffer instead of string
             };
             if (this.options.basic_auth) {
                 const secrets = ctx.environments['__secrets'];
@@ -4535,7 +4557,8 @@ var connectedContent = {
             const res = await rp(rpOption);
             if (res.statusCode >= 200 && res.statusCode <= 299) {
                 try {
-                    const jsonRes = JSON.parse(res.body);
+                    const decompressedBody = await decompressResponse(res.body, res.headers['content-encoding'] || 'identity');
+                    const jsonRes = JSON.parse(decompressedBody);
                     jsonRes.__http_status_code__ = res.statusCode;
                     ctx.environments[this.options.save || 'connected'] = jsonRes;
                     emitter.write('');
@@ -4543,10 +4566,13 @@ var connectedContent = {
                 catch (error) {
                     if (res.headers['content-type']?.includes('json')) {
                         console.error(`Failed to parse body as JSON: "${res.body}"`);
-                        ctx.environments[this.options.save || 'connected'] = { error: 'JSON parse error', body: res.body };
+                        ctx.environments[this.options.save || 'connected'] = {
+                            error: 'JSON parse error',
+                            body: res.body.toString()
+                        };
                     }
                     else {
-                        ctx.environments[this.options.save || 'connected'] = res.body;
+                        ctx.environments[this.options.save || 'connected'] = res.body.toString();
                     }
                     emitter.write('');
                 }
@@ -4555,7 +4581,7 @@ var connectedContent = {
                 ctx.environments[this.options.save || 'connected'] = {
                     error: `Request failed with status ${res.statusCode}`,
                     status: res.statusCode,
-                    body: res.body
+                    body: res.body.toString()
                 };
                 emitter.write('');
             }

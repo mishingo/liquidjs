@@ -4,10 +4,10 @@
  * Released under the MIT License.
  */
 (function (global, factory) {
-    typeof exports === 'object' && typeof module !== 'undefined' ? factory(exports, require('path'), require('crypto'), require('request-promise-cache')) :
-    typeof define === 'function' && define.amd ? define(['exports', 'path', 'crypto', 'request-promise-cache'], factory) :
-    (global = global || self, factory(global.liquidjs = {}, global.path, global.crypto, global.rp_));
-}(this, (function (exports, path, crypto, rp_) { 'use strict';
+    typeof exports === 'object' && typeof module !== 'undefined' ? factory(exports, require('path'), require('crypto'), require('request-promise-cache'), require('zlib'), require('util')) :
+    typeof define === 'function' && define.amd ? define(['exports', 'path', 'crypto', 'request-promise-cache', 'zlib', 'util'], factory) :
+    (global = global || self, factory(global.liquidjs = {}, global.path, global.crypto, global.rp_, global.zlib, global.util));
+}(this, (function (exports, path, crypto, rp_, zlib, util) { 'use strict';
 
     /******************************************************************************
     Copyright (c) Microsoft Corporation.
@@ -5972,8 +5972,38 @@
     var brazeFilters = __assign(__assign(__assign(__assign(__assign({}, hash), json$1), url), encoding), number);
 
     var rp = rp_;
+    var gunzip = util.promisify(zlib.gunzip);
+    var inflate = util.promisify(zlib.inflate);
     var re = new RegExp("(\\{\\{.*?\\}\\}|https?://[^\\s]+)(\\s+(\\s|.)*)?$");
     var headerRegex = new RegExp(":headers\\s+(\\{(.|\\s)*?[^\\}]\\}([^\\}]|$))");
+    function decompressResponse(body, encoding) {
+        return __awaiter(this, void 0, void 0, function () {
+            var _a, error_1;
+            return __generator(this, function (_b) {
+                switch (_b.label) {
+                    case 0:
+                        _b.trys.push([0, 7, , 8]);
+                        _a = encoding.toLowerCase();
+                        switch (_a) {
+                            case 'gzip': return [3 /*break*/, 1];
+                            case 'deflate': return [3 /*break*/, 3];
+                        }
+                        return [3 /*break*/, 5];
+                    case 1: return [4 /*yield*/, gunzip(body)];
+                    case 2: return [2 /*return*/, (_b.sent()).toString()];
+                    case 3: return [4 /*yield*/, inflate(body)];
+                    case 4: return [2 /*return*/, (_b.sent()).toString()];
+                    case 5: return [2 /*return*/, body.toString()];
+                    case 6: return [3 /*break*/, 8];
+                    case 7:
+                        error_1 = _b.sent();
+                        console.error("Decompression failed: ".concat(error_1));
+                        return [2 /*return*/, body.toString()];
+                    case 8: return [2 /*return*/];
+                }
+            });
+        });
+    }
     var connectedContent = {
         parse: function (tagToken) {
             var _this = this;
@@ -6003,12 +6033,12 @@
         render: function (ctx, emitter) {
             var _a;
             return __awaiter(this, void 0, void 0, function () {
-                var renderedUrl, method, cacheTTL, cache, contentType, headers, _b, _c, key, _d, _e, e_1_1, body, jsonBody, _f, _g, element, bodyElementSplit, _h, _j, e_2_1, rpOption, secrets, secret, res, jsonRes, error_1, requestError;
+                var renderedUrl, method, cacheTTL, cache, contentType, headers, _b, _c, key, _d, _e, e_1_1, body, jsonBody, _f, _g, element, bodyElementSplit, _h, _j, e_2_1, rpOption, secrets, secret, res, decompressedBody, jsonRes, error_2, error_3, requestError;
                 var e_1, _k, e_2, _l;
                 return __generator(this, function (_m) {
                     switch (_m.label) {
                         case 0:
-                            _m.trys.push([0, 22, , 23]);
+                            _m.trys.push([0, 28, , 29]);
                             return [4 /*yield*/, this.liquid.parseAndRender(this.url, ctx.getAll())];
                         case 1:
                             renderedUrl = _m.sent();
@@ -6033,7 +6063,8 @@
                             headers = {
                                 'User-Agent': 'brazejs-client',
                                 'Content-Type': contentType,
-                                'Accept': this.options.content_type
+                                'Accept': this.options.content_type,
+                                'Accept-Encoding': 'gzip, deflate' // Explicitly accept compressed responses
                             };
                             if (!this.options.headers) return [3 /*break*/, 9];
                             _m.label = 2;
@@ -6117,7 +6148,8 @@
                                 timeout: 2000,
                                 followRedirect: true,
                                 followAllRedirects: true,
-                                simple: false
+                                simple: false,
+                                encoding: null // Get response as Buffer instead of string
                             };
                             if (this.options.basic_auth) {
                                 secrets = ctx.environments['__secrets'];
@@ -6133,43 +6165,52 @@
                             return [4 /*yield*/, rp(rpOption)];
                         case 21:
                             res = _m.sent();
-                            if (res.statusCode >= 200 && res.statusCode <= 299) {
-                                try {
-                                    jsonRes = JSON.parse(res.body);
-                                    jsonRes.__http_status_code__ = res.statusCode;
-                                    ctx.environments[this.options.save || 'connected'] = jsonRes;
-                                    emitter.write('');
-                                }
-                                catch (error) {
-                                    if ((_a = res.headers['content-type']) === null || _a === void 0 ? void 0 : _a.includes('json')) {
-                                        console.error("Failed to parse body as JSON: \"".concat(res.body, "\""));
-                                        ctx.environments[this.options.save || 'connected'] = { error: 'JSON parse error', body: res.body };
-                                    }
-                                    else {
-                                        ctx.environments[this.options.save || 'connected'] = res.body;
-                                    }
-                                    emitter.write('');
-                                }
+                            if (!(res.statusCode >= 200 && res.statusCode <= 299)) return [3 /*break*/, 26];
+                            _m.label = 22;
+                        case 22:
+                            _m.trys.push([22, 24, , 25]);
+                            return [4 /*yield*/, decompressResponse(res.body, res.headers['content-encoding'] || 'identity')];
+                        case 23:
+                            decompressedBody = _m.sent();
+                            jsonRes = JSON.parse(decompressedBody);
+                            jsonRes.__http_status_code__ = res.statusCode;
+                            ctx.environments[this.options.save || 'connected'] = jsonRes;
+                            emitter.write('');
+                            return [3 /*break*/, 25];
+                        case 24:
+                            error_2 = _m.sent();
+                            if ((_a = res.headers['content-type']) === null || _a === void 0 ? void 0 : _a.includes('json')) {
+                                console.error("Failed to parse body as JSON: \"".concat(res.body, "\""));
+                                ctx.environments[this.options.save || 'connected'] = {
+                                    error: 'JSON parse error',
+                                    body: res.body.toString()
+                                };
                             }
                             else {
-                                ctx.environments[this.options.save || 'connected'] = {
-                                    error: "Request failed with status ".concat(res.statusCode),
-                                    status: res.statusCode,
-                                    body: res.body
-                                };
-                                emitter.write('');
+                                ctx.environments[this.options.save || 'connected'] = res.body.toString();
                             }
-                            return [3 /*break*/, 23];
-                        case 22:
-                            error_1 = _m.sent();
-                            requestError = error_1;
+                            emitter.write('');
+                            return [3 /*break*/, 25];
+                        case 25: return [3 /*break*/, 27];
+                        case 26:
+                            ctx.environments[this.options.save || 'connected'] = {
+                                error: "Request failed with status ".concat(res.statusCode),
+                                status: res.statusCode,
+                                body: res.body.toString()
+                            };
+                            emitter.write('');
+                            _m.label = 27;
+                        case 27: return [3 /*break*/, 29];
+                        case 28:
+                            error_3 = _m.sent();
+                            requestError = error_3;
                             ctx.environments[this.options.save || 'connected'] = {
                                 error: requestError.message || 'Request failed',
                                 status: requestError.statusCode
                             };
                             emitter.write('');
-                            return [3 /*break*/, 23];
-                        case 23: return [2 /*return*/];
+                            return [3 /*break*/, 29];
+                        case 29: return [2 /*return*/];
                     }
                 });
             });

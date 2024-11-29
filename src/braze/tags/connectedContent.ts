@@ -2,14 +2,34 @@ import { TagImplOptions } from '../../template/tag-options-adapter'
 // @ts-ignore
 import * as rp_ from 'request-promise-cache'
 const rp = rp_
+import * as zlib from 'zlib'
+import { promisify } from 'util'
 
 interface RequestError {
   message?: string;
   statusCode?: number;
 }
 
+const gunzip = promisify(zlib.gunzip)
+const inflate = promisify(zlib.inflate)
 const re = new RegExp(`(\\{\\{.*?\\}\\}|https?://[^\\s]+)(\\s+(\\s|.)*)?$`)
 const headerRegex = new RegExp(`:headers\\s+(\\{(.|\\s)*?[^\\}]\\}([^\\}]|$))`)
+
+async function decompressResponse(body: Buffer, encoding: string): Promise<string> {
+  try {
+    switch (encoding.toLowerCase()) {
+      case 'gzip':
+        return (await gunzip(body)).toString()
+      case 'deflate':
+        return (await inflate(body)).toString()
+      default:
+        return body.toString()
+    }
+  } catch (error) {
+    console.error(`Decompression failed: ${error}`)
+    return body.toString()
+  }
+}
 
 export default <TagImplOptions>{
   parse: function (tagToken) {
@@ -60,7 +80,8 @@ export default <TagImplOptions>{
       const headers = {
         'User-Agent': 'brazejs-client',
         'Content-Type': contentType,
-        'Accept': this.options.content_type
+        'Accept': this.options.content_type,
+        'Accept-Encoding': 'gzip, deflate'  // Explicitly accept compressed responses
       }
       if (this.options.headers) {
         for (const key of Object.keys(this.options.headers)) {
@@ -93,7 +114,8 @@ export default <TagImplOptions>{
         timeout: 2000,
         followRedirect: true,
         followAllRedirects: true,
-        simple: false
+        simple: false,
+        encoding: null  // Get response as Buffer instead of string
       }
 
       if (this.options.basic_auth) {
@@ -109,16 +131,24 @@ export default <TagImplOptions>{
       
       if (res.statusCode >= 200 && res.statusCode <= 299) {
         try {
-          const jsonRes = JSON.parse(res.body)
+          const decompressedBody = await decompressResponse(
+            res.body,
+            res.headers['content-encoding'] || 'identity'
+          )
+          
+          const jsonRes = JSON.parse(decompressedBody)
           jsonRes.__http_status_code__ = res.statusCode
           ctx.environments[this.options.save || 'connected'] = jsonRes
           emitter.write('')
         } catch (error) {
           if (res.headers['content-type']?.includes('json')) {
             console.error(`Failed to parse body as JSON: "${res.body}"`)
-            ctx.environments[this.options.save || 'connected'] = { error: 'JSON parse error', body: res.body }
+            ctx.environments[this.options.save || 'connected'] = { 
+              error: 'JSON parse error', 
+              body: res.body.toString()
+            }
           } else {
-            ctx.environments[this.options.save || 'connected'] = res.body
+            ctx.environments[this.options.save || 'connected'] = res.body.toString()
           }
           emitter.write('')
         }
@@ -126,7 +156,7 @@ export default <TagImplOptions>{
         ctx.environments[this.options.save || 'connected'] = {
           error: `Request failed with status ${res.statusCode}`,
           status: res.statusCode,
-          body: res.body
+          body: res.body.toString()
         }
         emitter.write('')
       }
