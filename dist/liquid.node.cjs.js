@@ -4442,28 +4442,51 @@ const gunzip = util.promisify(zlib.gunzip);
 const inflate = util.promisify(zlib.inflate);
 const re = new RegExp(`(\\{\\{.*?\\}\\}|https?://[^\\s]+)(\\s+(\\s|.)*)?$`);
 const headerRegex = new RegExp(`:headers\\s+(\\{(.|\\s)*?[^\\}]\\}([^\\}]|$))`);
-// Helper function to detect if content is gzipped
 function isGzipped(buffer) {
     return buffer[0] === 0x1f && buffer[1] === 0x8b && buffer[2] === 0x08;
 }
 async function handleResponse(body, contentEncoding, contentType) {
+    // If body is already an object, return it directly
+    if (typeof body === 'object' && !Buffer.isBuffer(body)) {
+        return body;
+    }
     // Handle binary buffer
     if (Buffer.isBuffer(body)) {
-        // Check for gzipped content either by header or content inspection
+        // Check for gzipped content
         if (contentEncoding === 'gzip' || isGzipped(body)) {
             try {
                 const decompressed = await gunzip(body);
-                return decompressed.toString('utf-8');
+                const text = decompressed.toString('utf-8');
+                try {
+                    return JSON.parse(text);
+                }
+                catch {
+                    return text;
+                }
             }
             catch (error) {
                 console.error('Gunzip decompression failed:', error);
                 return body.toString('utf-8');
             }
         }
-        return body.toString('utf-8');
+        const text = body.toString('utf-8');
+        try {
+            return JSON.parse(text);
+        }
+        catch {
+            return text;
+        }
     }
     // Handle string content
-    return String(body);
+    if (typeof body === 'string') {
+        try {
+            return JSON.parse(body);
+        }
+        catch {
+            return body;
+        }
+    }
+    return body;
 }
 var connectedContent = {
     parse: function (tagToken) {
@@ -4548,7 +4571,8 @@ var connectedContent = {
                 followRedirect: true,
                 followAllRedirects: true,
                 simple: false,
-                encoding: null // Important: Get response as Buffer
+                encoding: null,
+                json: false // Don't auto-parse JSON
             };
             if (this.options.basic_auth) {
                 const secrets = ctx.environments['__secrets'];
@@ -4564,23 +4588,29 @@ var connectedContent = {
             const res = await rp(rpOption);
             if (res.statusCode >= 200 && res.statusCode <= 299) {
                 try {
-                    const responseText = await handleResponse(res.body, res.headers['content-encoding'], res.headers['content-type']);
-                    const jsonRes = JSON.parse(responseText);
-                    jsonRes.__http_status_code__ = res.statusCode;
-                    ctx.environments[this.options.save || 'connected'] = jsonRes;
+                    const processedResponse = await handleResponse(res.body, res.headers['content-encoding'], res.headers['content-type']);
+                    if (typeof processedResponse === 'object' && processedResponse !== null) {
+                        processedResponse.__http_status_code__ = res.statusCode;
+                        ctx.environments[this.options.save || 'connected'] = processedResponse;
+                    }
+                    else {
+                        ctx.environments[this.options.save || 'connected'] = {
+                            body: processedResponse,
+                            __http_status_code__: res.statusCode
+                        };
+                    }
                     emitter.write('');
                 }
                 catch (error) {
-                    console.error('Response handling error:', error);
-                    if (res.headers['content-type']?.includes('json')) {
-                        ctx.environments[this.options.save || 'connected'] = {
-                            error: 'JSON parse error',
-                            body: res.body.toString('base64') // Safely encode binary data
-                        };
-                    }
-                    else {
-                        ctx.environments[this.options.save || 'connected'] = res.body.toString('utf-8');
-                    }
+                    const processingError = error;
+                    console.error('Response handling error:', processingError);
+                    ctx.environments[this.options.save || 'connected'] = {
+                        error: 'Response processing error',
+                        message: processingError.message || 'Unknown error occurred',
+                        body: typeof res.body === 'object' ?
+                            JSON.stringify(res.body) :
+                            res.body.toString('utf-8')
+                    };
                     emitter.write('');
                 }
             }
@@ -4588,7 +4618,9 @@ var connectedContent = {
                 ctx.environments[this.options.save || 'connected'] = {
                     error: `Request failed with status ${res.statusCode}`,
                     status: res.statusCode,
-                    body: res.body.toString('utf-8')
+                    body: typeof res.body === 'object' ?
+                        JSON.stringify(res.body) :
+                        res.body.toString('utf-8')
                 };
                 emitter.write('');
             }
