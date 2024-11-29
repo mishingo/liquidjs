@@ -2,69 +2,15 @@ import { TagImplOptions } from '../../template/tag-options-adapter'
 // @ts-ignore
 import * as rp_ from 'request-promise-cache'
 const rp = rp_
-import * as zlib from 'zlib'
-import { promisify } from 'util'
 
 interface RequestError {
   message?: string;
   statusCode?: number;
 }
 
-interface ProcessingError extends Error {
-  message: string;
-}
-
-const gunzip = promisify(zlib.gunzip)
-const inflate = promisify(zlib.inflate)
+// Matches both direct URLs and Liquid variables/expressions
 const re = new RegExp(`(\\{\\{.*?\\}\\}|https?://[^\\s]+)(\\s+(\\s|.)*)?$`)
 const headerRegex = new RegExp(`:headers\\s+(\\{(.|\\s)*?[^\\}]\\}([^\\}]|$))`)
-
-function isGzipped(buffer: Buffer): boolean {
-  return buffer[0] === 0x1f && buffer[1] === 0x8b && buffer[2] === 0x08;
-}
-
-async function handleResponse(body: Buffer | string | object, contentEncoding: string, contentType: string): Promise<any> {
-  // If body is already an object, return it directly
-  if (typeof body === 'object' && !Buffer.isBuffer(body)) {
-    return body;
-  }
-
-  // Handle binary buffer
-  if (Buffer.isBuffer(body)) {
-    // Check for gzipped content
-    if (contentEncoding === 'gzip' || isGzipped(body)) {
-      try {
-        const decompressed = await gunzip(body)
-        const text = decompressed.toString('utf-8')
-        try {
-          return JSON.parse(text);
-        } catch {
-          return text;
-        }
-      } catch (error) {
-        console.error('Gunzip decompression failed:', error)
-        return body.toString('utf-8')
-      }
-    }
-    const text = body.toString('utf-8')
-    try {
-      return JSON.parse(text);
-    } catch {
-      return text;
-    }
-  }
-  
-  // Handle string content
-  if (typeof body === 'string') {
-    try {
-      return JSON.parse(body);
-    } catch {
-      return body;
-    }
-  }
-
-  return body;
-}
 
 export default <TagImplOptions>{
   parse: function (tagToken) {
@@ -92,8 +38,10 @@ export default <TagImplOptions>{
   },
   render: async function (ctx, emitter) {
     try {
+      // Parse any Liquid variables/expressions in the URL
       const renderedUrl = await this.liquid.parseAndRender(this.url, ctx.getAll())
 
+      // Set up caching
       const method = (this.options.method || 'GET').toUpperCase()
       let cacheTTL = 300 * 1000
       if (method !== 'GET') {
@@ -107,23 +55,27 @@ export default <TagImplOptions>{
         }
       }
 
+      // Set up content type
       let contentType = this.options.content_type
       if (method === 'POST') {
         contentType = this.options.content_type || 'application/x-www-form-urlencoded'
       }
 
+      // Set up headers
       const headers = {
         'User-Agent': 'brazejs-client',
         'Content-Type': contentType,
-        'Accept': this.options.content_type,
-        'Accept-Encoding': 'gzip'
+        'Accept': this.options.content_type
       }
+      
+      // Handle custom headers if present
       if (this.options.headers) {
         for (const key of Object.keys(this.options.headers)) {
           headers[key] = await this.liquid.parseAndRender(this.options.headers[key], ctx.getAll())
         }
       }
 
+      // Handle body if present
       let body = this.options.body
       if (this.options.body) {
         if (method.toUpperCase() === 'POST' && contentType.toLowerCase().includes('application/json')) {
@@ -150,10 +102,11 @@ export default <TagImplOptions>{
         followRedirect: true,
         followAllRedirects: true,
         simple: false,
-        encoding: null,  // Get response as Buffer
-        json: false     // Don't auto-parse JSON
+        json: true,    // Auto-parse JSON
+        gzip: true     // Auto-handle gzip
       }
 
+      // Handle basic auth if present
       if (this.options.basic_auth) {
         const secrets = ctx.environments['__secrets']
         if (!secrets) throw new Error('No secrets defined in context!')
@@ -166,45 +119,17 @@ export default <TagImplOptions>{
       const res = await rp(rpOption)
       
       if (res.statusCode >= 200 && res.statusCode <= 299) {
-        try {
-          const processedResponse = await handleResponse(
-            res.body,
-            res.headers['content-encoding'],
-            res.headers['content-type']
-          )
-          
-          if (typeof processedResponse === 'object' && processedResponse !== null) {
-            processedResponse.__http_status_code__ = res.statusCode
-            ctx.environments[this.options.save || 'connected'] = processedResponse
-          } else {
-            ctx.environments[this.options.save || 'connected'] = {
-              body: processedResponse,
-              __http_status_code__: res.statusCode
-            }
-          }
-          emitter.write('')
-        } catch (error: unknown) {
-          const processingError = error as ProcessingError
-          console.error('Response handling error:', processingError)
-          ctx.environments[this.options.save || 'connected'] = { 
-            error: 'Response processing error',
-            message: processingError.message || 'Unknown error occurred',
-            body: typeof res.body === 'object' ? 
-              JSON.stringify(res.body) : 
-              res.body.toString('utf-8')
-          }
-          emitter.write('')
-        }
+        const jsonRes = typeof res.body === 'object' ? res.body : { body: res.body }
+        jsonRes.__http_status_code__ = res.statusCode
+        ctx.environments[this.options.save || 'connected'] = jsonRes
       } else {
         ctx.environments[this.options.save || 'connected'] = {
           error: `Request failed with status ${res.statusCode}`,
           status: res.statusCode,
-          body: typeof res.body === 'object' ? 
-            JSON.stringify(res.body) : 
-            res.body.toString('utf-8')
+          body: res.body
         }
-        emitter.write('')
       }
+      emitter.write('')
     } catch (error: unknown) {
       const requestError = error as RequestError
       ctx.environments[this.options.save || 'connected'] = {

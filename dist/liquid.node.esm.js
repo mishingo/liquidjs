@@ -8,8 +8,6 @@ import { sep, extname, resolve as resolve$1, dirname as dirname$1, join as join$
 import { statSync, readFileSync as readFileSync$1, stat, readFile as readFile$1 } from 'fs';
 import { createHash, createHmac } from 'crypto';
 import * as rp_ from 'request-promise-cache';
-import { gunzip as gunzip$1, inflate as inflate$1 } from 'zlib';
-import { promisify as promisify$1 } from 'util';
 
 class Token {
     constructor(kind, input, begin, end, file) {
@@ -4452,58 +4450,9 @@ var number = {
 var brazeFilters = Object.assign(Object.assign(Object.assign(Object.assign(Object.assign({}, hash), json$1), url), encoding), number);
 
 const rp = rp_;
-const gunzip = promisify$1(gunzip$1);
-const inflate = promisify$1(inflate$1);
+// Matches both direct URLs and Liquid variables/expressions
 const re = new RegExp(`(\\{\\{.*?\\}\\}|https?://[^\\s]+)(\\s+(\\s|.)*)?$`);
 const headerRegex = new RegExp(`:headers\\s+(\\{(.|\\s)*?[^\\}]\\}([^\\}]|$))`);
-function isGzipped(buffer) {
-    return buffer[0] === 0x1f && buffer[1] === 0x8b && buffer[2] === 0x08;
-}
-function handleResponse(body, contentEncoding, contentType) {
-    return __awaiter(this, void 0, void 0, function* () {
-        // If body is already an object, return it directly
-        if (typeof body === 'object' && !Buffer.isBuffer(body)) {
-            return body;
-        }
-        // Handle binary buffer
-        if (Buffer.isBuffer(body)) {
-            // Check for gzipped content
-            if (contentEncoding === 'gzip' || isGzipped(body)) {
-                try {
-                    const decompressed = yield gunzip(body);
-                    const text = decompressed.toString('utf-8');
-                    try {
-                        return JSON.parse(text);
-                    }
-                    catch (_a) {
-                        return text;
-                    }
-                }
-                catch (error) {
-                    console.error('Gunzip decompression failed:', error);
-                    return body.toString('utf-8');
-                }
-            }
-            const text = body.toString('utf-8');
-            try {
-                return JSON.parse(text);
-            }
-            catch (_b) {
-                return text;
-            }
-        }
-        // Handle string content
-        if (typeof body === 'string') {
-            try {
-                return JSON.parse(body);
-            }
-            catch (_c) {
-                return body;
-            }
-        }
-        return body;
-    });
-}
 var connectedContent = {
     parse: function (tagToken) {
         const match = tagToken.args.match(re);
@@ -4532,7 +4481,9 @@ var connectedContent = {
     render: function (ctx, emitter) {
         return __awaiter(this, void 0, void 0, function* () {
             try {
+                // Parse any Liquid variables/expressions in the URL
                 const renderedUrl = yield this.liquid.parseAndRender(this.url, ctx.getAll());
+                // Set up caching
                 const method = (this.options.method || 'GET').toUpperCase();
                 let cacheTTL = 300 * 1000;
                 if (method !== 'GET') {
@@ -4547,21 +4498,24 @@ var connectedContent = {
                         cacheTTL = 1;
                     }
                 }
+                // Set up content type
                 let contentType = this.options.content_type;
                 if (method === 'POST') {
                     contentType = this.options.content_type || 'application/x-www-form-urlencoded';
                 }
+                // Set up headers
                 const headers = {
                     'User-Agent': 'brazejs-client',
                     'Content-Type': contentType,
-                    'Accept': this.options.content_type,
-                    'Accept-Encoding': 'gzip'
+                    'Accept': this.options.content_type
                 };
+                // Handle custom headers if present
                 if (this.options.headers) {
                     for (const key of Object.keys(this.options.headers)) {
                         headers[key] = yield this.liquid.parseAndRender(this.options.headers[key], ctx.getAll());
                     }
                 }
+                // Handle body if present
                 let body = this.options.body;
                 if (this.options.body) {
                     if (method.toUpperCase() === 'POST' && contentType.toLowerCase().includes('application/json')) {
@@ -4588,9 +4542,10 @@ var connectedContent = {
                     followRedirect: true,
                     followAllRedirects: true,
                     simple: false,
-                    encoding: null,
-                    json: false // Don't auto-parse JSON
+                    json: true,
+                    gzip: true // Auto-handle gzip
                 };
+                // Handle basic auth if present
                 if (this.options.basic_auth) {
                     const secrets = ctx.environments['__secrets'];
                     if (!secrets)
@@ -4604,43 +4559,18 @@ var connectedContent = {
                 }
                 const res = yield rp(rpOption);
                 if (res.statusCode >= 200 && res.statusCode <= 299) {
-                    try {
-                        const processedResponse = yield handleResponse(res.body, res.headers['content-encoding'], res.headers['content-type']);
-                        if (typeof processedResponse === 'object' && processedResponse !== null) {
-                            processedResponse.__http_status_code__ = res.statusCode;
-                            ctx.environments[this.options.save || 'connected'] = processedResponse;
-                        }
-                        else {
-                            ctx.environments[this.options.save || 'connected'] = {
-                                body: processedResponse,
-                                __http_status_code__: res.statusCode
-                            };
-                        }
-                        emitter.write('');
-                    }
-                    catch (error) {
-                        const processingError = error;
-                        console.error('Response handling error:', processingError);
-                        ctx.environments[this.options.save || 'connected'] = {
-                            error: 'Response processing error',
-                            message: processingError.message || 'Unknown error occurred',
-                            body: typeof res.body === 'object' ?
-                                JSON.stringify(res.body) :
-                                res.body.toString('utf-8')
-                        };
-                        emitter.write('');
-                    }
+                    const jsonRes = typeof res.body === 'object' ? res.body : { body: res.body };
+                    jsonRes.__http_status_code__ = res.statusCode;
+                    ctx.environments[this.options.save || 'connected'] = jsonRes;
                 }
                 else {
                     ctx.environments[this.options.save || 'connected'] = {
                         error: `Request failed with status ${res.statusCode}`,
                         status: res.statusCode,
-                        body: typeof res.body === 'object' ?
-                            JSON.stringify(res.body) :
-                            res.body.toString('utf-8')
+                        body: res.body
                     };
-                    emitter.write('');
                 }
+                emitter.write('');
             }
             catch (error) {
                 const requestError = error;

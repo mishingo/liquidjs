@@ -4,10 +4,10 @@
  * Released under the MIT License.
  */
 (function (global, factory) {
-    typeof exports === 'object' && typeof module !== 'undefined' ? factory(exports, require('path'), require('crypto'), require('request-promise-cache'), require('zlib'), require('util')) :
-    typeof define === 'function' && define.amd ? define(['exports', 'path', 'crypto', 'request-promise-cache', 'zlib', 'util'], factory) :
-    (global = global || self, factory(global.liquidjs = {}, global.path, global.crypto, global.rp_, global.zlib, global.util));
-}(this, (function (exports, path, crypto, rp_, zlib, util) { 'use strict';
+    typeof exports === 'object' && typeof module !== 'undefined' ? factory(exports, require('path'), require('crypto'), require('request-promise-cache')) :
+    typeof define === 'function' && define.amd ? define(['exports', 'path', 'crypto', 'request-promise-cache'], factory) :
+    (global = global || self, factory(global.liquidjs = {}, global.path, global.crypto, global.rp_));
+}(this, (function (exports, path, crypto, rp_) { 'use strict';
 
     /******************************************************************************
     Copyright (c) Microsoft Corporation.
@@ -5972,67 +5972,9 @@
     var brazeFilters = __assign(__assign(__assign(__assign(__assign({}, hash), json$1), url), encoding), number);
 
     var rp = rp_;
-    var gunzip = util.promisify(zlib.gunzip);
-    var inflate = util.promisify(zlib.inflate);
+    // Matches both direct URLs and Liquid variables/expressions
     var re = new RegExp("(\\{\\{.*?\\}\\}|https?://[^\\s]+)(\\s+(\\s|.)*)?$");
     var headerRegex = new RegExp(":headers\\s+(\\{(.|\\s)*?[^\\}]\\}([^\\}]|$))");
-    function isGzipped(buffer) {
-        return buffer[0] === 0x1f && buffer[1] === 0x8b && buffer[2] === 0x08;
-    }
-    function handleResponse(body, contentEncoding, contentType) {
-        return __awaiter(this, void 0, void 0, function () {
-            var decompressed, text_1, error_1, text;
-            return __generator(this, function (_a) {
-                switch (_a.label) {
-                    case 0:
-                        // If body is already an object, return it directly
-                        if (typeof body === 'object' && !Buffer.isBuffer(body)) {
-                            return [2 /*return*/, body];
-                        }
-                        if (!Buffer.isBuffer(body)) return [3 /*break*/, 5];
-                        if (!(contentEncoding === 'gzip' || isGzipped(body))) return [3 /*break*/, 4];
-                        _a.label = 1;
-                    case 1:
-                        _a.trys.push([1, 3, , 4]);
-                        return [4 /*yield*/, gunzip(body)];
-                    case 2:
-                        decompressed = _a.sent();
-                        text_1 = decompressed.toString('utf-8');
-                        try {
-                            return [2 /*return*/, JSON.parse(text_1)];
-                        }
-                        catch (_b) {
-                            return [2 /*return*/, text_1];
-                        }
-                        return [3 /*break*/, 4];
-                    case 3:
-                        error_1 = _a.sent();
-                        console.error('Gunzip decompression failed:', error_1);
-                        return [2 /*return*/, body.toString('utf-8')];
-                    case 4:
-                        text = body.toString('utf-8');
-                        try {
-                            return [2 /*return*/, JSON.parse(text)];
-                        }
-                        catch (_c) {
-                            return [2 /*return*/, text];
-                        }
-                        _a.label = 5;
-                    case 5:
-                        // Handle string content
-                        if (typeof body === 'string') {
-                            try {
-                                return [2 /*return*/, JSON.parse(body)];
-                            }
-                            catch (_d) {
-                                return [2 /*return*/, body];
-                            }
-                        }
-                        return [2 /*return*/, body];
-                }
-            });
-        });
-    }
     var connectedContent = {
         parse: function (tagToken) {
             var _this = this;
@@ -6061,13 +6003,15 @@
         },
         render: function (ctx, emitter) {
             return __awaiter(this, void 0, void 0, function () {
-                var renderedUrl, method, cacheTTL, cache, contentType, headers, _a, _b, key, _c, _d, e_1_1, body, jsonBody, _e, _f, element, bodyElementSplit, _g, _h, e_2_1, rpOption, secrets, secret, res, processedResponse, error_2, processingError, error_3, requestError;
+                var renderedUrl, method, cacheTTL, cache, contentType, headers, _a, _b, key, _c, _d, e_1_1, body, jsonBody, _e, _f, element, bodyElementSplit, _g, _h, e_2_1, rpOption, secrets, secret, res, jsonRes, error_1, requestError;
                 var e_1, _j, e_2, _k;
                 return __generator(this, function (_l) {
                     switch (_l.label) {
                         case 0:
-                            _l.trys.push([0, 28, , 29]);
-                            return [4 /*yield*/, this.liquid.parseAndRender(this.url, ctx.getAll())];
+                            _l.trys.push([0, 22, , 23]);
+                            return [4 /*yield*/, this.liquid.parseAndRender(this.url, ctx.getAll())
+                                // Set up caching
+                            ];
                         case 1:
                             renderedUrl = _l.sent();
                             method = (this.options.method || 'GET').toUpperCase();
@@ -6091,8 +6035,7 @@
                             headers = {
                                 'User-Agent': 'brazejs-client',
                                 'Content-Type': contentType,
-                                'Accept': this.options.content_type,
-                                'Accept-Encoding': 'gzip'
+                                'Accept': this.options.content_type
                             };
                             if (!this.options.headers) return [3 /*break*/, 9];
                             _l.label = 2;
@@ -6177,9 +6120,10 @@
                                 followRedirect: true,
                                 followAllRedirects: true,
                                 simple: false,
-                                encoding: null,
-                                json: false // Don't auto-parse JSON
+                                json: true,
+                                gzip: true // Auto-handle gzip
                             };
+                            // Handle basic auth if present
                             if (this.options.basic_auth) {
                                 secrets = ctx.environments['__secrets'];
                                 if (!secrets)
@@ -6194,60 +6138,30 @@
                             return [4 /*yield*/, rp(rpOption)];
                         case 21:
                             res = _l.sent();
-                            if (!(res.statusCode >= 200 && res.statusCode <= 299)) return [3 /*break*/, 26];
-                            _l.label = 22;
-                        case 22:
-                            _l.trys.push([22, 24, , 25]);
-                            return [4 /*yield*/, handleResponse(res.body, res.headers['content-encoding'])];
-                        case 23:
-                            processedResponse = _l.sent();
-                            if (typeof processedResponse === 'object' && processedResponse !== null) {
-                                processedResponse.__http_status_code__ = res.statusCode;
-                                ctx.environments[this.options.save || 'connected'] = processedResponse;
+                            if (res.statusCode >= 200 && res.statusCode <= 299) {
+                                jsonRes = typeof res.body === 'object' ? res.body : { body: res.body };
+                                jsonRes.__http_status_code__ = res.statusCode;
+                                ctx.environments[this.options.save || 'connected'] = jsonRes;
                             }
                             else {
                                 ctx.environments[this.options.save || 'connected'] = {
-                                    body: processedResponse,
-                                    __http_status_code__: res.statusCode
+                                    error: "Request failed with status ".concat(res.statusCode),
+                                    status: res.statusCode,
+                                    body: res.body
                                 };
                             }
                             emitter.write('');
-                            return [3 /*break*/, 25];
-                        case 24:
-                            error_2 = _l.sent();
-                            processingError = error_2;
-                            console.error('Response handling error:', processingError);
-                            ctx.environments[this.options.save || 'connected'] = {
-                                error: 'Response processing error',
-                                message: processingError.message || 'Unknown error occurred',
-                                body: typeof res.body === 'object' ?
-                                    JSON.stringify(res.body) :
-                                    res.body.toString('utf-8')
-                            };
-                            emitter.write('');
-                            return [3 /*break*/, 25];
-                        case 25: return [3 /*break*/, 27];
-                        case 26:
-                            ctx.environments[this.options.save || 'connected'] = {
-                                error: "Request failed with status ".concat(res.statusCode),
-                                status: res.statusCode,
-                                body: typeof res.body === 'object' ?
-                                    JSON.stringify(res.body) :
-                                    res.body.toString('utf-8')
-                            };
-                            emitter.write('');
-                            _l.label = 27;
-                        case 27: return [3 /*break*/, 29];
-                        case 28:
-                            error_3 = _l.sent();
-                            requestError = error_3;
+                            return [3 /*break*/, 23];
+                        case 22:
+                            error_1 = _l.sent();
+                            requestError = error_1;
                             ctx.environments[this.options.save || 'connected'] = {
                                 error: requestError.message || 'Request failed',
                                 status: requestError.statusCode
                             };
                             emitter.write('');
-                            return [3 /*break*/, 29];
-                        case 29: return [2 /*return*/];
+                            return [3 /*break*/, 23];
+                        case 23: return [2 /*return*/];
                     }
                 });
             });
