@@ -2021,7 +2021,9 @@ class Tokenizer {
         const { tagDelimiterLeft, outputDelimiterLeft } = options;
         if (this.rawBeginAt > -1)
             return this.readEndrawOrRawContent(options);
-        if (this.match('<!DOCTYPE') || this.match('<!doctype')) {
+        // Use toLowerCase() to make case-insensitive
+        const input = this.input.slice(this.p).toLowerCase();
+        if (input.startsWith('<!doctype')) {
             return this.readDOCTYPEToken();
         }
         if (this.match('{{content_blocks.${'))

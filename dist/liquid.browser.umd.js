@@ -2463,7 +2463,9 @@
             var tagDelimiterLeft = options.tagDelimiterLeft, outputDelimiterLeft = options.outputDelimiterLeft;
             if (this.rawBeginAt > -1)
                 return this.readEndrawOrRawContent(options);
-            if (this.match('<!DOCTYPE') || this.match('<!doctype')) {
+            // Use toLowerCase() to make case-insensitive
+            var input = this.input.slice(this.p).toLowerCase();
+            if (input.startsWith('<!doctype')) {
                 return this.readDOCTYPEToken();
             }
             if (this.match('{{content_blocks.${'))
