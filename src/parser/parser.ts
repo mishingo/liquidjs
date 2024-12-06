@@ -25,17 +25,15 @@ export class Parser {
     this.loader = new Loader(this.liquid.options)
     this.parseLimit = new Limiter('parse length', liquid.options.parseLimit)
   }
+  
   public parse (html: string, filepath?: string): Template[] {
-    // Handle DOCTYPE before parse5 sees it
-    if (html.startsWith('<!DOCTYPE')) {
-      html = '<!DOCTYPE html>' + html.slice(html.indexOf('>') + 1)
-    }
-    
+    // Remove automatic DOCTYPE conversion
     html = String(html.replace(/(?<!\{\{content_blocks\.)\$\{([^}]+)\}/g, '$1'))
     const tokenizer = new Tokenizer(html, this.liquid.options.operators, filepath)
     const tokens = tokenizer.readTopLevelTokens(this.liquid.options)
     return this.parseTokens(tokens)
   }
+
   public parseTokens (tokens: TopLevelToken[]) {
     let token
     const templates: Template[] = []

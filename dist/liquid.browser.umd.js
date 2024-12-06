@@ -3435,10 +3435,7 @@
             this.parseLimit = new Limiter('parse length', liquid.options.parseLimit);
         }
         Parser.prototype.parse = function (html, filepath) {
-            // Handle DOCTYPE before parse5 sees it
-            if (html.startsWith('<!DOCTYPE')) {
-                html = '<!DOCTYPE html>' + html.slice(html.indexOf('>') + 1);
-            }
+            // Remove automatic DOCTYPE conversion
             html = String(html.replace(/(?<!\{\{content_blocks\.)\$\{([^}]+)\}/g, '$1'));
             var tokenizer = new Tokenizer(html, this.liquid.options.operators, filepath);
             var tokens = tokenizer.readTopLevelTokens(this.liquid.options);
