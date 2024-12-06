@@ -2339,14 +2339,13 @@
                     case 0:
                         if (!(this.p < this.N)) return [3 /*break*/, 7];
                         if (!this.match('${')) return [3 /*break*/, 2];
-                        this.p += 2; // Skip "${"
+                        this.p += 2;
                         expressionTokens = this.readExpressionTokens();
-                        return [5 /*yield**/, // Read the inner expression tokens
-                            __values(expressionTokens)];
+                        return [5 /*yield**/, __values(expressionTokens)];
                     case 1:
                         _a.sent();
                         this.assert(this.peek() === '}', "expected \"}\" at the end of dynamic expression");
-                        this.p++; // Skip "}"
+                        this.p++;
                         return [3 /*break*/, 0];
                     case 2:
                         operator = this.readOperator();
@@ -2367,23 +2366,6 @@
                 }
             });
         };
-        /*
-        * readExpressionTokens (): IterableIterator<Token> {
-          while (this.p < this.N) {
-            const operator = this.readOperator()
-            if (operator) {
-              yield operator
-              continue
-            }
-            const operand = this.readValue()
-            if (operand) {
-              yield operand
-              continue
-            }
-            return
-          }
-        }
-          */
         Tokenizer.prototype.readOperator = function () {
             this.skipBlank();
             var end = this.matchTrie(this.opTrie);
@@ -2406,17 +2388,14 @@
                 return -1;
             return i;
         };
-        // v2
         Tokenizer.prototype.readFilteredValue = function () {
             var begin = this.p;
-            // Check if the expression starts with ${ indicating a dynamic expression
             if (this.match('$')) {
-                this.p += 2; // skip "${"
-                var dynamicExpression = this.readExpression(); // Parse the expression inside ${}
+                this.p += 2;
+                var dynamicExpression = this.readExpression();
                 this.assert(dynamicExpression.valid(), "invalid value expression: ".concat(this.snapshot()));
                 this.assert(this.peek() === '}', "expected \"}\" at the end of dynamic expression");
-                this.p++; // skip "}"
-                // Return the dynamic expression directly as a FilteredValueToken
+                this.p++;
                 return new FilteredValueToken(dynamicExpression, [], this.input, begin, this.p, this.file);
             }
             var initial = this.readExpression();
@@ -2424,16 +2403,6 @@
             var filters = this.readFilters();
             return new FilteredValueToken(initial, filters, this.input, begin, this.p, this.file);
         };
-        /*
-        readFilteredValue (): FilteredValueToken {
-          const begin = this.p;
-      
-          const initial = this.readExpression();
-          this.assert(initial.valid(), `invalid value expression: ${this.snapshot()}`);
-          const filters = this.readFilters();
-          return new FilteredValueToken(initial, filters, this.input, begin, this.p, this.file);
-        }
-          */
         Tokenizer.prototype.readFilters = function () {
             var filters = [];
             while (true) {
@@ -2467,10 +2436,6 @@
                     this.assert(this.end() || this.peek() === ',' || this.peek() === '|', function () { return "unexpected character ".concat(_this.snapshot()); });
                 } while (this.peek() === ',');
             }
-            else if (this.peek() === '|' || this.end()) ;
-            else {
-                throw this.error('expected ":" after filter name');
-            }
             return new FilterToken(name.getText(), args, this.input, begin, this.p, this.file);
         };
         Tokenizer.prototype.readFilterArg = function () {
@@ -2498,13 +2463,24 @@
             var tagDelimiterLeft = options.tagDelimiterLeft, outputDelimiterLeft = options.outputDelimiterLeft;
             if (this.rawBeginAt > -1)
                 return this.readEndrawOrRawContent(options);
+            if (this.match('<!DOCTYPE') || this.match('<!doctype')) {
+                return this.readDOCTYPEToken();
+            }
             if (this.match('{{content_blocks.${'))
-                return this.readContentBlocksToken(options); // Handle content_blocks tag
+                return this.readContentBlocksToken(options);
             if (this.match(tagDelimiterLeft))
                 return this.readTagToken(options);
             if (this.match(outputDelimiterLeft))
                 return this.readOutputToken(options);
             return this.readHTMLToken([tagDelimiterLeft, outputDelimiterLeft]);
+        };
+        Tokenizer.prototype.readDOCTYPEToken = function () {
+            var begin = this.p;
+            while (this.p < this.N && this.input[this.p] !== '>') {
+                this.p++;
+            }
+            this.p++; // Include the closing '>'
+            return new HTMLToken(this.input, begin, this.p, this.file);
         };
         Tokenizer.prototype.readHTMLToken = function (stopStrings) {
             var _this = this;
@@ -2530,27 +2506,23 @@
         Tokenizer.prototype.readContentBlocksToken = function (options) {
             var _a = this, file = _a.file, input = _a.input;
             var begin = this.p;
-            // Move the pointer past the '{{content_blocks.' part
             this.p += '{{content_blocks.'.length;
-            // Read the dynamic part within ${}
             if (this.input[this.p] === '$' && this.input[this.p + 1] === '{') {
-                this.p += 2; // Move past the '${'
+                this.p += 2;
                 var filename = '';
                 while (this.p < this.N && !(this.input[this.p] === '}' && this.input[this.p + 1] === '}')) {
                     filename += this.input[this.p];
                     this.p++;
                 }
-                // Ensure the tag ends with '}}'
                 if (this.input[this.p] === '}' && this.input[this.p + 1] === '}') {
-                    this.p += 3; // Move past the closing '}}'
+                    this.p += 3;
                 }
                 else {
                     throw this.error('Tag not closed properly');
                 }
-                // Create a new TagToken
                 var token = new TagToken(input, begin, this.p, options, file);
                 //@ts-ignore  
-                token.filename = filename; // Add the filename as a property
+                token.filename = filename;
                 return token;
             }
             else {

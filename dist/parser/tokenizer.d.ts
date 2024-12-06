@@ -22,6 +22,7 @@ export declare class Tokenizer {
     readFilterArg(): FilterArg | undefined;
     readTopLevelTokens(options?: NormalizedFullOptions): TopLevelToken[];
     readTopLevelToken(options: NormalizedFullOptions): TopLevelToken;
+    readDOCTYPEToken(): HTMLToken;
     readHTMLToken(stopStrings: string[]): HTMLToken;
     readTagToken(options: NormalizedFullOptions): TagToken;
     readContentBlocksToken(options: NormalizedFullOptions): TagToken;
