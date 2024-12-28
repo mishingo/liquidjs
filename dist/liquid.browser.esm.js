@@ -4576,9 +4576,73 @@ var abortMessage = {
     }
 };
 
+const rp$1 = rp_;
+// Match the catalog_items tag syntax: catalog_items live-posts post_uid
+const tagRegex = /^(live-posts)\s+(.+)$/;
+var catalogItems = {
+    parse: function (tagToken) {
+        const match = tagToken.args.match(tagRegex);
+        if (!match) {
+            throw new Error(`Invalid catalog_items tag format: ${tagToken.getText()}`);
+        }
+        this.catalogType = match[1]; // Should be 'live-posts'
+        this.postUid = match[2]; // The post UID expression
+    },
+    render: function (ctx, emitter) {
+        return __awaiter(this, void 0, void 0, function* () {
+            try {
+                // Parse any Liquid variables in the post UID
+                const renderedPostUid = yield this.liquid.parseAndRender(this.postUid, ctx.getAll());
+                // Get the authorization token from env
+                const authToken = process.env.VITE_BRAZE_CATALOG_AUTH_TOKEN;
+                if (!authToken) {
+                    throw new Error('VITE_BRAZE_CATALOG_AUTH_TOKEN environment variable is not set');
+                }
+                const rpOptions = {
+                    method: 'GET',
+                    uri: `https://rest.iad-01.braze.com/catalogs/${this.catalogType}/items`,
+                    headers: {
+                        'Authorization': `Bearer ${authToken}`,
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json'
+                    },
+                    json: true,
+                    cacheKey: `catalog-${this.catalogType}-${renderedPostUid}`,
+                    cacheTTL: 300 * 1000,
+                    timeout: 2000,
+                    followRedirect: true,
+                    followAllRedirects: true,
+                    simple: false,
+                    resolveWithFullResponse: true
+                };
+                const response = yield rp$1(rpOptions);
+                if (response.statusCode >= 200 && response.statusCode <= 299) {
+                    // Store the items in the context using proper scope method
+                    ctx.push({
+                        items: response.body.items || []
+                    });
+                }
+                else {
+                    ctx.push({ items: [] });
+                    console.error(`Catalog items request failed with status ${response.statusCode}:`, response.body);
+                }
+                // The tag doesn't output anything directly
+                emitter.write('');
+            }
+            catch (error) {
+                const requestError = error;
+                console.error('Error fetching catalog items:', requestError.message);
+                ctx.push({ items: [] });
+                emitter.write('');
+            }
+        });
+    }
+};
+
 const tags$1 = {
     'connected_content': connectedContent,
     'abort_message': abortMessage,
+    'catalog_items': catalogItems
     //'content_blocks': ContentBlockTag
 };
 

@@ -6171,9 +6171,85 @@
         }
     };
 
+    var rp$1 = rp_;
+    // Match the catalog_items tag syntax: catalog_items live-posts post_uid
+    var tagRegex = /^(live-posts)\s+(.+)$/;
+    var catalogItems = {
+        parse: function (tagToken) {
+            var match = tagToken.args.match(tagRegex);
+            if (!match) {
+                throw new Error("Invalid catalog_items tag format: ".concat(tagToken.getText()));
+            }
+            this.catalogType = match[1]; // Should be 'live-posts'
+            this.postUid = match[2]; // The post UID expression
+        },
+        render: function (ctx, emitter) {
+            return __awaiter(this, void 0, void 0, function () {
+                var renderedPostUid, authToken, rpOptions, response, error_1, requestError;
+                return __generator(this, function (_a) {
+                    switch (_a.label) {
+                        case 0:
+                            _a.trys.push([0, 3, , 4]);
+                            return [4 /*yield*/, this.liquid.parseAndRender(this.postUid, ctx.getAll())
+                                // Get the authorization token from env
+                            ];
+                        case 1:
+                            renderedPostUid = _a.sent();
+                            authToken = process.env.VITE_BRAZE_CATALOG_AUTH_TOKEN;
+                            if (!authToken) {
+                                throw new Error('VITE_BRAZE_CATALOG_AUTH_TOKEN environment variable is not set');
+                            }
+                            rpOptions = {
+                                method: 'GET',
+                                uri: "https://rest.iad-01.braze.com/catalogs/".concat(this.catalogType, "/items"),
+                                headers: {
+                                    'Authorization': "Bearer ".concat(authToken),
+                                    'Content-Type': 'application/json',
+                                    'Accept': 'application/json'
+                                },
+                                json: true,
+                                cacheKey: "catalog-".concat(this.catalogType, "-").concat(renderedPostUid),
+                                cacheTTL: 300 * 1000,
+                                timeout: 2000,
+                                followRedirect: true,
+                                followAllRedirects: true,
+                                simple: false,
+                                resolveWithFullResponse: true
+                            };
+                            return [4 /*yield*/, rp$1(rpOptions)];
+                        case 2:
+                            response = _a.sent();
+                            if (response.statusCode >= 200 && response.statusCode <= 299) {
+                                // Store the items in the context using proper scope method
+                                ctx.push({
+                                    items: response.body.items || []
+                                });
+                            }
+                            else {
+                                ctx.push({ items: [] });
+                                console.error("Catalog items request failed with status ".concat(response.statusCode, ":"), response.body);
+                            }
+                            // The tag doesn't output anything directly
+                            emitter.write('');
+                            return [3 /*break*/, 4];
+                        case 3:
+                            error_1 = _a.sent();
+                            requestError = error_1;
+                            console.error('Error fetching catalog items:', requestError.message);
+                            ctx.push({ items: [] });
+                            emitter.write('');
+                            return [3 /*break*/, 4];
+                        case 4: return [2 /*return*/];
+                    }
+                });
+            });
+        }
+    };
+
     var tags$1 = {
         'connected_content': connectedContent,
         'abort_message': abortMessage,
+        'catalog_items': catalogItems
         //'content_blocks': ContentBlockTag
     };
 
