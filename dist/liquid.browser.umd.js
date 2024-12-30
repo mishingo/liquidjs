@@ -6191,13 +6191,13 @@
                         case 0:
                             _a.trys.push([0, 3, , 4]);
                             return [4 /*yield*/, this.liquid.parseAndRender(this.postUid, ctx.getAll())
-                                // Get the authorization token from env
+                                // Get the authorization token
                             ];
                         case 1:
                             renderedPostUid = _a.sent();
-                            authToken = process.env.VITE_BRAZE_CATALOG_AUTH_TOKEN;
+                            authToken = ctx.get(['braze_catalog_auth_token']);
                             if (!authToken) {
-                                throw new Error('VITE_BRAZE_CATALOG_AUTH_TOKEN environment variable is not set');
+                                throw new Error('braze_catalog_auth_token not found in context');
                             }
                             rpOptions = {
                                 method: 'GET',

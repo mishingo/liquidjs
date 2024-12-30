@@ -4593,10 +4593,10 @@ var catalogItems = {
             try {
                 // Parse any Liquid variables in the post UID
                 const renderedPostUid = yield this.liquid.parseAndRender(this.postUid, ctx.getAll());
-                // Get the authorization token from env
-                const authToken = process.env.VITE_BRAZE_CATALOG_AUTH_TOKEN;
+                // Get the authorization token
+                const authToken = ctx.get(['braze_catalog_auth_token']);
                 if (!authToken) {
-                    throw new Error('VITE_BRAZE_CATALOG_AUTH_TOKEN environment variable is not set');
+                    throw new Error('braze_catalog_auth_token not found in context');
                 }
                 const rpOptions = {
                     method: 'GET',
