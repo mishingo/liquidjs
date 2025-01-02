@@ -1,6 +1,6 @@
 /*
  * liquidjs@10.16.1, https://github.com/harttle/liquidjs
- * (c) 2016-2024 harttle
+ * (c) 2016-2025 harttle
  * Released under the MIT License.
  */
 (function (global, factory) {
@@ -6172,28 +6172,31 @@
     };
 
     var rp$1 = rp_;
-    // Match the catalog_items tag syntax: catalog_items live-posts post_uid
-    var tagRegex = /^(live-posts)\s+(.+)$/;
+    // Match the catalog_items tag syntax: catalog_items catalog_type post_uid
+    var tagRegex = /^(\S+)\s+(.+)$/;
     var catalogItems = {
         parse: function (tagToken) {
             var match = tagToken.args.match(tagRegex);
             if (!match) {
-                throw new Error("Invalid catalog_items tag format: ".concat(tagToken.getText()));
+                throw new Error("Invalid catalog_items tag format: ".concat(tagToken.getText(), ". Expected format: catalog_items catalog_type post_uid"));
             }
-            this.catalogType = match[1]; // Should be 'live-posts'
+            this.catalogType = match[1]; // The catalog type (e.g., 'live-posts', 'products', etc.)
             this.postUid = match[2]; // The post UID expression
         },
         render: function (ctx, emitter) {
             return __awaiter(this, void 0, void 0, function () {
-                var renderedPostUid, authToken, rpOptions, response, error_1, requestError;
+                var renderedCatalogType, renderedPostUid, authToken, rpOptions, response, error_1, requestError;
                 return __generator(this, function (_a) {
                     switch (_a.label) {
                         case 0:
-                            _a.trys.push([0, 3, , 4]);
+                            _a.trys.push([0, 4, , 5]);
+                            return [4 /*yield*/, this.liquid.parseAndRender(this.catalogType, ctx.getAll())];
+                        case 1:
+                            renderedCatalogType = _a.sent();
                             return [4 /*yield*/, this.liquid.parseAndRender(this.postUid, ctx.getAll())
                                 // Get the authorization token
                             ];
-                        case 1:
+                        case 2:
                             renderedPostUid = _a.sent();
                             authToken = ctx.get(['braze_catalog_auth_token']);
                             if (!authToken) {
@@ -6201,14 +6204,14 @@
                             }
                             rpOptions = {
                                 method: 'GET',
-                                uri: "https://rest.iad-01.braze.com/catalogs/".concat(this.catalogType, "/items"),
+                                uri: "https://rest.iad-01.braze.com/catalogs/".concat(renderedCatalogType, "/items"),
                                 headers: {
                                     'Authorization': "Bearer ".concat(authToken),
                                     'Content-Type': 'application/json',
                                     'Accept': 'application/json'
                                 },
                                 json: true,
-                                cacheKey: "catalog-".concat(this.catalogType, "-").concat(renderedPostUid),
+                                cacheKey: "catalog-".concat(renderedCatalogType, "-").concat(renderedPostUid),
                                 cacheTTL: 300 * 1000,
                                 timeout: 2000,
                                 followRedirect: true,
@@ -6217,7 +6220,7 @@
                                 resolveWithFullResponse: true
                             };
                             return [4 /*yield*/, rp$1(rpOptions)];
-                        case 2:
+                        case 3:
                             response = _a.sent();
                             if (response.statusCode >= 200 && response.statusCode <= 299) {
                                 // Store the items in the context using proper scope method
@@ -6231,15 +6234,15 @@
                             }
                             // The tag doesn't output anything directly
                             emitter.write('');
-                            return [3 /*break*/, 4];
-                        case 3:
+                            return [3 /*break*/, 5];
+                        case 4:
                             error_1 = _a.sent();
                             requestError = error_1;
                             console.error('Error fetching catalog items:', requestError.message);
                             ctx.push({ items: [] });
                             emitter.write('');
-                            return [3 /*break*/, 4];
-                        case 4: return [2 /*return*/];
+                            return [3 /*break*/, 5];
+                        case 5: return [2 /*return*/];
                     }
                 });
             });

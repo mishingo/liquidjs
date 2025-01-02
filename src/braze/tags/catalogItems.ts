@@ -8,23 +8,24 @@ interface RequestError {
   statusCode?: number;
 }
 
-// Match the catalog_items tag syntax: catalog_items live-posts post_uid
-const tagRegex = /^(live-posts)\s+(.+)$/
+// Match the catalog_items tag syntax: catalog_items catalog_type post_uid
+const tagRegex = /^(\S+)\s+(.+)$/
 
 export default <TagImplOptions>{
   parse: function (tagToken) {
     const match = tagToken.args.match(tagRegex)
     if (!match) {
-      throw new Error(`Invalid catalog_items tag format: ${tagToken.getText()}`)
+      throw new Error(`Invalid catalog_items tag format: ${tagToken.getText()}. Expected format: catalog_items catalog_type post_uid`)
     }
     
-    this.catalogType = match[1]  // Should be 'live-posts'
+    this.catalogType = match[1]  // The catalog type (e.g., 'live-posts', 'products', etc.)
     this.postUid = match[2]      // The post UID expression
   },
 
   render: async function (ctx, emitter) {
     try {
-      // Parse any Liquid variables in the post UID
+      // Parse the catalog type and post UID
+      const renderedCatalogType = await this.liquid.parseAndRender(this.catalogType, ctx.getAll())
       const renderedPostUid = await this.liquid.parseAndRender(this.postUid, ctx.getAll())
       
       // Get the authorization token
@@ -35,14 +36,14 @@ export default <TagImplOptions>{
 
       const rpOptions = {
         method: 'GET',
-        uri: `https://rest.iad-01.braze.com/catalogs/${this.catalogType}/items`,
+        uri: `https://rest.iad-01.braze.com/catalogs/${renderedCatalogType}/items`,
         headers: {
           'Authorization': `Bearer ${authToken}`,
           'Content-Type': 'application/json',
           'Accept': 'application/json'
         },
         json: true,
-        cacheKey: `catalog-${this.catalogType}-${renderedPostUid}`,
+        cacheKey: `catalog-${renderedCatalogType}-${renderedPostUid}`,
         cacheTTL: 300 * 1000, // 5 minute cache
         timeout: 2000,
         followRedirect: true,

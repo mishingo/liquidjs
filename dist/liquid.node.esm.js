@@ -1,6 +1,6 @@
 /*
  * liquidjs@10.16.1, https://github.com/harttle/liquidjs
- * (c) 2016-2024 harttle
+ * (c) 2016-2025 harttle
  * Released under the MIT License.
  */
 import { PassThrough } from 'stream';
@@ -4584,21 +4584,22 @@ var abortMessage = {
 };
 
 const rp$1 = rp_;
-// Match the catalog_items tag syntax: catalog_items live-posts post_uid
-const tagRegex = /^(live-posts)\s+(.+)$/;
+// Match the catalog_items tag syntax: catalog_items catalog_type post_uid
+const tagRegex = /^(\S+)\s+(.+)$/;
 var catalogItems = {
     parse: function (tagToken) {
         const match = tagToken.args.match(tagRegex);
         if (!match) {
-            throw new Error(`Invalid catalog_items tag format: ${tagToken.getText()}`);
+            throw new Error(`Invalid catalog_items tag format: ${tagToken.getText()}. Expected format: catalog_items catalog_type post_uid`);
         }
-        this.catalogType = match[1]; // Should be 'live-posts'
+        this.catalogType = match[1]; // The catalog type (e.g., 'live-posts', 'products', etc.)
         this.postUid = match[2]; // The post UID expression
     },
     render: function (ctx, emitter) {
         return __awaiter(this, void 0, void 0, function* () {
             try {
-                // Parse any Liquid variables in the post UID
+                // Parse the catalog type and post UID
+                const renderedCatalogType = yield this.liquid.parseAndRender(this.catalogType, ctx.getAll());
                 const renderedPostUid = yield this.liquid.parseAndRender(this.postUid, ctx.getAll());
                 // Get the authorization token
                 const authToken = ctx.get(['braze_catalog_auth_token']);
@@ -4607,14 +4608,14 @@ var catalogItems = {
                 }
                 const rpOptions = {
                     method: 'GET',
-                    uri: `https://rest.iad-01.braze.com/catalogs/${this.catalogType}/items`,
+                    uri: `https://rest.iad-01.braze.com/catalogs/${renderedCatalogType}/items`,
                     headers: {
                         'Authorization': `Bearer ${authToken}`,
                         'Content-Type': 'application/json',
                         'Accept': 'application/json'
                     },
                     json: true,
-                    cacheKey: `catalog-${this.catalogType}-${renderedPostUid}`,
+                    cacheKey: `catalog-${renderedCatalogType}-${renderedPostUid}`,
                     cacheTTL: 300 * 1000,
                     timeout: 2000,
                     followRedirect: true,
