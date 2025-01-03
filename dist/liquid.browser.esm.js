@@ -4601,7 +4601,7 @@ var catalogItems = {
                 }
                 const rpOptions = {
                     method: 'GET',
-                    uri: `https://rest.iad-01.braze.com/catalogs/${renderedCatalogType}/items`,
+                    uri: `https://rest.iad-01.braze.com/catalogs/${renderedCatalogType}/items/${renderedPostUid}`,
                     headers: {
                         'Authorization': `Bearer ${authToken}`,
                         'Content-Type': 'application/json',
@@ -4617,10 +4617,10 @@ var catalogItems = {
                     resolveWithFullResponse: true
                 };
                 const response = yield rp$1(rpOptions);
-                if (response.statusCode >= 200 && response.statusCode <= 299) {
-                    // Store the items in the context using proper scope method
+                if (response.statusCode >= 200 && response.statusCode <= 299 && response.body) {
+                    // Store the response in an array to maintain compatibility with existing templates
                     ctx.push({
-                        items: response.body.items || []
+                        items: [response.body]
                     });
                 }
                 else {
