@@ -53,8 +53,6 @@ export default <TagImplOptions>{
           'Accept': 'application/json'
         },
         json: true,
-        cacheKey: `catalog-${renderedCatalogType}-${renderedPostUid}`,
-        cacheTTL: 300 * 1000, // 5 minute cache
         timeout: 2000,
         followRedirect: true,
         followAllRedirects: true,

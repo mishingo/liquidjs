@@ -4615,8 +4615,6 @@ var catalogItems = {
                         'Accept': 'application/json'
                     },
                     json: true,
-                    cacheKey: `catalog-${renderedCatalogType}-${renderedPostUid}`,
-                    cacheTTL: 300 * 1000,
                     timeout: 2000,
                     followRedirect: true,
                     followAllRedirects: true,
