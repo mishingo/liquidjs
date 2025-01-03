@@ -4601,6 +4601,7 @@ var catalogItems = {
                 // Parse the catalog type and post UID
                 const renderedCatalogType = yield this.liquid.parseAndRender(this.catalogType, ctx.getAll());
                 const renderedPostUid = yield this.liquid.parseAndRender(this.postUid, ctx.getAll());
+                console.log(renderedPostUid);
                 // Get the authorization token
                 const authToken = ctx.get(['braze_catalog_auth_token']);
                 if (!authToken) {

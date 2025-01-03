@@ -6193,11 +6193,10 @@
                             return [4 /*yield*/, this.liquid.parseAndRender(this.catalogType, ctx.getAll())];
                         case 1:
                             renderedCatalogType = _a.sent();
-                            return [4 /*yield*/, this.liquid.parseAndRender(this.postUid, ctx.getAll())
-                                // Get the authorization token
-                            ];
+                            return [4 /*yield*/, this.liquid.parseAndRender(this.postUid, ctx.getAll())];
                         case 2:
                             renderedPostUid = _a.sent();
+                            console.log(renderedPostUid);
                             authToken = ctx.get(['braze_catalog_auth_token']);
                             if (!authToken) {
                                 throw new Error('braze_catalog_auth_token not found in context');
