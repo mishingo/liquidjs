@@ -8,6 +8,16 @@ interface RequestError {
   statusCode?: number;
 }
 
+interface CatalogItem {
+  id: string;
+  [key: string]: any;  // Allow for other properties
+}
+
+interface CatalogResponse {
+  items?: CatalogItem[];
+  message?: string;
+}
+
 // Match the catalog_items tag syntax: catalog_items catalog_type post_uid
 const tagRegex = /^(\S+)\s+(.+)$/
 
@@ -55,10 +65,14 @@ export default <TagImplOptions>{
       const response = await rp(rpOptions)
 
       if (response.statusCode >= 200 && response.statusCode <= 299 && response.body) {
-        // Store the response in an array to maintain compatibility with existing templates
-        ctx.push({ 
-          items: [response.body]
-        })
+        const catalogResponse = response.body as CatalogResponse
+        const items = catalogResponse.items || []
+        const filteredItems = items.filter((item: CatalogItem) => 
+          item.id && item.id.toString() === renderedPostUid.toString()
+        )
+        
+        // Store the items in the context
+        ctx.push({ items: filteredItems })
       } else {
         ctx.push({ items: [] })
         console.error(`Catalog items request failed with status ${response.statusCode}:`, response.body)

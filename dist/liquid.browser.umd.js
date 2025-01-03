@@ -6185,7 +6185,7 @@
         },
         render: function (ctx, emitter) {
             return __awaiter(this, void 0, void 0, function () {
-                var renderedCatalogType, renderedPostUid, authToken, rpOptions, response, error_1, requestError;
+                var renderedCatalogType, renderedPostUid_1, authToken, rpOptions, response, catalogResponse, items, filteredItems, error_1, requestError;
                 return __generator(this, function (_a) {
                     switch (_a.label) {
                         case 0:
@@ -6197,21 +6197,21 @@
                                 // Get the authorization token
                             ];
                         case 2:
-                            renderedPostUid = _a.sent();
+                            renderedPostUid_1 = _a.sent();
                             authToken = ctx.get(['braze_catalog_auth_token']);
                             if (!authToken) {
                                 throw new Error('braze_catalog_auth_token not found in context');
                             }
                             rpOptions = {
                                 method: 'GET',
-                                uri: "https://rest.iad-01.braze.com/catalogs/".concat(renderedCatalogType, "/items/").concat(renderedPostUid),
+                                uri: "https://rest.iad-01.braze.com/catalogs/".concat(renderedCatalogType, "/items/").concat(renderedPostUid_1),
                                 headers: {
                                     'Authorization': "Bearer ".concat(authToken),
                                     'Content-Type': 'application/json',
                                     'Accept': 'application/json'
                                 },
                                 json: true,
-                                cacheKey: "catalog-".concat(renderedCatalogType, "-").concat(renderedPostUid),
+                                cacheKey: "catalog-".concat(renderedCatalogType, "-").concat(renderedPostUid_1),
                                 cacheTTL: 300 * 1000,
                                 timeout: 2000,
                                 followRedirect: true,
@@ -6223,10 +6223,13 @@
                         case 3:
                             response = _a.sent();
                             if (response.statusCode >= 200 && response.statusCode <= 299 && response.body) {
-                                // Store the response in an array to maintain compatibility with existing templates
-                                ctx.push({
-                                    items: [response.body]
+                                catalogResponse = response.body;
+                                items = catalogResponse.items || [];
+                                filteredItems = items.filter(function (item) {
+                                    return item.id && item.id.toString() === renderedPostUid_1.toString();
                                 });
+                                // Store the items in the context
+                                ctx.push({ items: filteredItems });
                             }
                             else {
                                 ctx.push({ items: [] });
