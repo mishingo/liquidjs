@@ -14,8 +14,8 @@ interface CatalogItem {
 }
 
 interface CatalogResponse {
-  items?: CatalogItem[];
-  message?: string;
+  items: CatalogItem[];
+  message: string;
 }
 
 // Match the catalog_items tag syntax: catalog_items catalog_type post_uid
@@ -66,13 +66,11 @@ export default <TagImplOptions>{
 
       if (response.statusCode >= 200 && response.statusCode <= 299 && response.body) {
         const catalogResponse = response.body as CatalogResponse
-        const items = catalogResponse.items || []
-        const filteredItems = items.filter((item: CatalogItem) => 
-          item.id && item.id.toString() === renderedPostUid.toString()
-        )
-        
-        // Store the items in the context
-        ctx.push({ items: filteredItems })
+        if (catalogResponse.items && catalogResponse.items.length > 0) {
+          ctx.push({ items: catalogResponse.items })
+        } else {
+          ctx.push({ items: [] })
+        }
       } else {
         ctx.push({ items: [] })
         console.error(`Catalog items request failed with status ${response.statusCode}:`, response.body)

@@ -4608,10 +4608,12 @@ var catalogItems = {
             const response = await rp$1(rpOptions);
             if (response.statusCode >= 200 && response.statusCode <= 299 && response.body) {
                 const catalogResponse = response.body;
-                const items = catalogResponse.items || [];
-                const filteredItems = items.filter((item) => item.id && item.id.toString() === renderedPostUid.toString());
-                // Store the items in the context
-                ctx.push({ items: filteredItems });
+                if (catalogResponse.items && catalogResponse.items.length > 0) {
+                    ctx.push({ items: catalogResponse.items });
+                }
+                else {
+                    ctx.push({ items: [] });
+                }
             }
             else {
                 ctx.push({ items: [] });
