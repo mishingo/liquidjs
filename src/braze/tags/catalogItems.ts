@@ -32,61 +32,44 @@ export default <TagImplOptions>{
     this.postUid = match[2].trim()  // Store the raw expression
     console.log('Parsed UID:', this.postUid) // Debug log
   },
-
   render: async function (ctx, emitter) {
     try {
       const renderedCatalogType = await this.liquid.parseAndRender(this.catalogType, ctx.getAll())
-      // Parse the UID expression directly
       const renderedPostUid = await this.liquid.evalValue(this.postUid, ctx)
       
-      console.log('Rendered UID:', renderedPostUid) // Debug log
+      console.log('Rendered UID:', renderedPostUid)
 
       if (!renderedPostUid) {
         throw new Error(`Failed to evaluate post UID: ${this.postUid}`)
       }
-      
-      // Get the authorization token
+
       const authToken = ctx.get(['braze_catalog_auth_token'])
       if (!authToken) {
         throw new Error('braze_catalog_auth_token not found in context')
       }
 
-      const rpOptions = {
-        method: 'GET',
+      const response = await rp({
+        method: 'GET', 
         uri: `https://rest.iad-01.braze.com/catalogs/${renderedCatalogType}/items/${renderedPostUid}`,
         headers: {
           'Authorization': `Bearer ${authToken}`,
-          'Content-Type': 'application/json',
-          'Accept': 'application/json'
+          'Content-Type': 'application/json'
         },
         json: true,
-        timeout: 2000,
-        followRedirect: true,
-        followAllRedirects: true,
-        simple: false,
-        resolveWithFullResponse: true
-      }
+        timeout: 2000
+      });
 
-      const response = await rp(rpOptions)
-
-      if (response.statusCode >= 200 && response.statusCode <= 299 && response.body) {
-        const catalogResponse = response.body as CatalogResponse
-        if (catalogResponse.items && catalogResponse.items.length > 0) {
-          ctx.push({ items: catalogResponse.items })
-        } else {
-          ctx.push({ items: [] })
-        }
+      if (response?.items) {
+        ctx.push({ items: response.items })
       } else {
         ctx.push({ items: [] })
-        console.error(`Catalog items request failed with status ${response.statusCode}:`, response.body)
       }
 
-      // The tag doesn't output anything directly
       emitter.write('')
 
     } catch (error: unknown) {
-      const requestError = error as RequestError
-      console.error('Error fetching catalog items:', requestError.message)
+      const err = error as Error
+      console.error('Request failed:', err.message) 
       ctx.push({ items: [] })
       emitter.write('')
     }
