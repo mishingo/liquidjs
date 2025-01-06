@@ -4585,15 +4585,15 @@ var abortMessage = {
 
 const rp$1 = rp_;
 // Match the catalog_items tag syntax: catalog_items catalog_type post_uid
-const tagRegex = /^(\S+)\s+(.+)$/;
+const tagRegex = /^(\S+)\s+\{\{(.+?)\}\}$/;
 var catalogItems = {
     parse: function (tagToken) {
         const match = tagToken.args.match(tagRegex);
         if (!match) {
-            throw new Error(`Invalid catalog_items tag format: ${tagToken.getText()}. Expected format: catalog_items catalog_type post_uid`);
+            throw new Error(`Invalid catalog_items tag format: ${tagToken.getText()}`);
         }
-        this.catalogType = match[1]; // The catalog type (e.g., 'live-posts', 'products', etc.)
-        this.postUid = match[2]; // The post UID expression
+        this.catalogType = match[1];
+        this.postUid = match[2].trim();
     },
     render: function (ctx, emitter) {
         return __awaiter(this, void 0, void 0, function* () {

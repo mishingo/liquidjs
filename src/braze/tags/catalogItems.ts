@@ -19,17 +19,16 @@ interface CatalogResponse {
 }
 
 // Match the catalog_items tag syntax: catalog_items catalog_type post_uid
-const tagRegex = /^(\S+)\s+(.+)$/
+const tagRegex = /^(\S+)\s+\{\{(.+?)\}\}$/
 
 export default <TagImplOptions>{
   parse: function (tagToken) {
     const match = tagToken.args.match(tagRegex)
     if (!match) {
-      throw new Error(`Invalid catalog_items tag format: ${tagToken.getText()}. Expected format: catalog_items catalog_type post_uid`)
+      throw new Error(`Invalid catalog_items tag format: ${tagToken.getText()}`)
     }
-    
-    this.catalogType = match[1]  // The catalog type (e.g., 'live-posts', 'products', etc.)
-    this.postUid = match[2]      // The post UID expression
+    this.catalogType = match[1]
+    this.postUid = match[2].trim()
   },
 
   render: async function (ctx, emitter) {
