@@ -48,6 +48,7 @@ export default <TagImplOptions>{
         throw new Error('braze_catalog_auth_token not found in context')
       }
 
+      console.log('theurl:', `https://rest.iad-01.braze.com/catalogs/${renderedCatalogType}/items/${renderedPostUid}`)
       const response = await rp({
         method: 'GET', 
         uri: `https://rest.iad-01.braze.com/catalogs/${renderedCatalogType}/items/${renderedPostUid}`,

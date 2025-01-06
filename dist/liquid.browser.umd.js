@@ -6205,6 +6205,7 @@
                             if (!authToken) {
                                 throw new Error('braze_catalog_auth_token not found in context');
                             }
+                            console.log('theurl:', "https://rest.iad-01.braze.com/catalogs/".concat(renderedCatalogType, "/items/").concat(renderedPostUid));
                             return [4 /*yield*/, rp$1({
                                     method: 'GET',
                                     uri: "https://rest.iad-01.braze.com/catalogs/".concat(renderedCatalogType, "/items/").concat(renderedPostUid),

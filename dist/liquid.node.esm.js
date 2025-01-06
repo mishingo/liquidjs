@@ -4609,6 +4609,7 @@ var catalogItems = {
                 if (!authToken) {
                     throw new Error('braze_catalog_auth_token not found in context');
                 }
+                console.log('theurl:', `https://rest.iad-01.braze.com/catalogs/${renderedCatalogType}/items/${renderedPostUid}`);
                 const response = yield rp$1({
                     method: 'GET',
                     uri: `https://rest.iad-01.braze.com/catalogs/${renderedCatalogType}/items/${renderedPostUid}`,
