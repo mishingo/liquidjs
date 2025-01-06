@@ -6181,7 +6181,8 @@
                 throw new Error("Invalid catalog_items tag format: ".concat(tagToken.getText()));
             }
             this.catalogType = match[1];
-            this.postUid = match[2].trim();
+            this.postUid = match[2].trim(); // Store the raw expression
+            console.log('Parsed UID:', this.postUid); // Debug log
         },
         render: function (ctx, emitter) {
             return __awaiter(this, void 0, void 0, function () {
@@ -6190,13 +6191,18 @@
                     switch (_a.label) {
                         case 0:
                             _a.trys.push([0, 4, , 5]);
-                            return [4 /*yield*/, this.liquid.parseAndRender(this.catalogType, ctx.getAll())];
+                            return [4 /*yield*/, this.liquid.parseAndRender(this.catalogType, ctx.getAll())
+                                // Parse the UID expression directly
+                            ];
                         case 1:
                             renderedCatalogType = _a.sent();
-                            return [4 /*yield*/, this.liquid.parseAndRender(this.postUid, ctx.getAll())];
+                            return [4 /*yield*/, this.liquid.evalValue(this.postUid, ctx)];
                         case 2:
                             renderedPostUid = _a.sent();
-                            console.log(renderedPostUid);
+                            console.log('Rendered UID:', renderedPostUid); // Debug log
+                            if (!renderedPostUid) {
+                                throw new Error("Failed to evaluate post UID: ".concat(this.postUid));
+                            }
                             authToken = ctx.get(['braze_catalog_auth_token']);
                             if (!authToken) {
                                 throw new Error('braze_catalog_auth_token not found in context');

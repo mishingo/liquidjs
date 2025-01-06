@@ -27,16 +27,23 @@ export default <TagImplOptions>{
     if (!match) {
       throw new Error(`Invalid catalog_items tag format: ${tagToken.getText()}`)
     }
+    
     this.catalogType = match[1]
-    this.postUid = match[2].trim()
+    this.postUid = match[2].trim()  // Store the raw expression
+    console.log('Parsed UID:', this.postUid) // Debug log
   },
 
   render: async function (ctx, emitter) {
     try {
-      // Parse the catalog type and post UID
       const renderedCatalogType = await this.liquid.parseAndRender(this.catalogType, ctx.getAll())
-      const renderedPostUid = await this.liquid.parseAndRender(this.postUid, ctx.getAll())
-      console.log(renderedPostUid)
+      // Parse the UID expression directly
+      const renderedPostUid = await this.liquid.evalValue(this.postUid, ctx)
+      
+      console.log('Rendered UID:', renderedPostUid) // Debug log
+
+      if (!renderedPostUid) {
+        throw new Error(`Failed to evaluate post UID: ${this.postUid}`)
+      }
       
       // Get the authorization token
       const authToken = ctx.get(['braze_catalog_auth_token'])
