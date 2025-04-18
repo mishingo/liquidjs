@@ -1270,41 +1270,19 @@ class Expression {
 function* evalToken(token, ctx, lenient = false) {
     if (!token)
         return;
-    let content = 'content' in token ? token.content : undefined;
-    if (typeof content === 'string' && content.includes('${')) {
-        content = content.replace(/\$\{([^}]+)\}/g, (_, varName) => {
-            return String(ctx._get(varName.trim())); // Use `_get()` instead of `get()`
-        });
+    if ('content' in token) {
+        const content = token.content;
+        return content;
     }
     if (isPropertyAccessToken(token))
         return yield evalPropertyAccessToken(token, ctx, lenient);
     if (isRangeToken(token))
         return yield evalRangeToken(token, ctx);
-    return content;
 }
-/*
-original
-export function * evalToken (token: Token | undefined, ctx: Context, lenient = false): IterableIterator<unknown> {
-  if (!token) return
-  if ('content' in token) return token.content
-  if (isPropertyAccessToken(token)) return yield evalPropertyAccessToken(token, ctx, lenient)
-  if (isRangeToken(token)) return yield evalRangeToken(token, ctx)
-}
-*/
 function* evalPropertyAccessToken(token, ctx, lenient) {
     const props = [];
     for (const prop of token.props) {
-        let propValue = yield evalToken(prop, ctx, false);
-        if (typeof propValue === 'string') {
-            // Handle dynamic expressions within ${} only if propValue is a string
-            //@ts-ignore
-            if (propValue.startsWith('${') && propValue.endsWith('}')) {
-                //@ts-ignore
-                propValue = propValue.slice(2, -1); // remove the `${` and `}`
-            }
-        }
-        //@ts-ignore
-        props.push(propValue);
+        props.push((yield evalToken(prop, ctx, false)));
     }
     try {
         if (token.variable) {
@@ -1318,53 +1296,9 @@ function* evalPropertyAccessToken(token, ctx, lenient) {
     catch (e) {
         if (lenient && e.name === 'InternalUndefinedVariableError')
             return null;
-        throw new UndefinedVariableError(e, token);
+        throw (new UndefinedVariableError(e, token));
     }
 }
-/*
-working without []
-function * evalPropertyAccessToken(token: PropertyAccessToken, ctx: Context, lenient: boolean): IterableIterator<unknown> {
-  const props: string[] = [];
-  for (const prop of token.props) {
-    let propValue = (yield evalToken(prop, ctx, false)) as unknown as string;
-    if (propValue.startsWith('${') && propValue.endsWith('}')) {
-      propValue = propValue.slice(2, -1); // remove the `${` and `}`
-    }
-    props.push(propValue);
-  }
-  try {
-    if (token.variable) {
-      const variable = yield evalToken(token.variable, ctx, lenient);
-      return yield ctx._getFromScope(variable, props);
-    } else {
-      return yield ctx._get(props);
-    }
-  } catch (e) {
-    if (lenient && (e as Error).name === 'InternalUndefinedVariableError') return null;
-    throw (new UndefinedVariableError(e as Error, token));
-  }
-}
-  */
-/*
-original
-function * evalPropertyAccessToken (token: PropertyAccessToken, ctx: Context, lenient: boolean): IterableIterator<unknown> {
-  const props: string[] = []
-  for (const prop of token.props) {
-    props.push((yield evalToken(prop, ctx, false)) as unknown as string)
-  }
-  try {
-    if (token.variable) {
-      const variable = yield evalToken(token.variable, ctx, lenient)
-      return yield ctx._getFromScope(variable, props)
-    } else {
-      return yield ctx._get(props)
-    }
-  } catch (e) {
-    if (lenient && (e as Error).name === 'InternalUndefinedVariableError') return null
-    throw (new UndefinedVariableError(e as Error, token))
-  }
-}
-  */
 function evalQuotedToken(token) {
     return token.content;
 }
@@ -2246,80 +2180,6 @@ class Tokenizer {
         }
         return props;
     }
-    /*
-    original
-    private readProperties (isBegin = true): (ValueToken | IdentifierToken)[] {
-      const props: (ValueToken | IdentifierToken)[] = []
-      while (true) {
-        if (this.peek() === '[') {
-          this.p++
-          const prop = this.readValue() || new IdentifierToken(this.input, this.p, this.p, this.file)
-          this.assert(this.readTo(']') !== -1, '[ not closed')
-          props.push(prop)
-          continue
-        }
-        if (isBegin && !props.length) {
-          const prop = this.readNonEmptyIdentifier()
-          if (prop) {
-            props.push(prop)
-            continue
-          }
-        }
-        if (this.peek() === '.' && this.peek(1) !== '.') { // skip range syntax
-          this.p++
-          const prop = this.readNonEmptyIdentifier()
-          if (!prop) break
-          props.push(prop)
-          continue
-        }
-        break
-      }
-      return props
-    }
-    */
-    /*
-    works
-    private readProperties(isBegin = true): (ValueToken | IdentifierToken)[] {
-      const props: (ValueToken | IdentifierToken)[] = [];
-      while (true) {
-        if (this.peek() === '[') {
-          this.p++;
-          const prop = this.readValue() || new IdentifierToken(this.input, this.p, this.p, this.file);
-          this.assert(this.readTo(']') !== -1, '[ not closed');
-          props.push(prop);
-          continue;
-        }
-        if (isBegin && !props.length) {
-          const prop = this.readNonEmptyIdentifier();
-          if (prop) {
-            props.push(prop);
-            continue;
-          }
-        }
-        if (this.peek() === '.' && this.peek(1) !== '..') { // skip range syntax
-          this.p++;
-          let prop;
-          if (this.peek() === '$' && this.peek(1) === '{') {
-            this.p += 2; // skip "${"
-            const start = this.p;
-            while (this.p < this.N && this.input[this.p] !== '}') {
-              this.p++;
-            }
-            prop = new IdentifierToken(this.input, start, this.p, this.file);
-            this.assert(this.input[this.p] === '}', `expected "}" at the end of dynamic property expression`);
-            this.p++; // skip "}"
-          } else {
-            prop = this.readNonEmptyIdentifier();
-          }
-          if (!prop) break;
-          props.push(prop);
-          continue;
-        }
-        break;
-      }
-      return props;
-    }
-    */
     readNumber() {
         this.skipBlank();
         let decimalFound = false;
@@ -4425,7 +4285,13 @@ var connectedContent = {
         if (options) {
             const headersMatch = options.match(headerRegex);
             if (headersMatch != null) {
-                this.options.headers = JSON.parse(headersMatch[1]);
+                try {
+                    this.options.headers = JSON.parse(headersMatch[1]);
+                }
+                catch (e) {
+                    console.error('Headers JSON parse error:', e);
+                    throw new Error(`Headers JSON malformed in token ${tagToken.getText()}`);
+                }
             }
             options.replace(headerRegex, '').split(/\s+:/).forEach((optStr) => {
                 if (optStr === '')
@@ -4442,6 +4308,7 @@ var connectedContent = {
         try {
             // Parse any Liquid variables/expressions in the URL
             const renderedUrl = await this.liquid.parseAndRender(this.url, ctx.getAll());
+            console.log('Rendered URL:', renderedUrl); // Debug log
             // Set up caching
             const method = (this.options.method || 'GET').toUpperCase();
             let cacheTTL = 300 * 1000;
@@ -4477,7 +4344,7 @@ var connectedContent = {
             // Handle body if present
             let body = this.options.body;
             if (this.options.body) {
-                if (method.toUpperCase() === 'POST' && contentType.toLowerCase().includes('application/json')) {
+                if (method.toUpperCase() === 'POST' && contentType && contentType.toLowerCase().includes('application/json')) {
                     const jsonBody = {};
                     for (const element of this.options.body.split('&')) {
                         const bodyElementSplit = element.split('=');
@@ -4516,7 +4383,9 @@ var connectedContent = {
                     throw new Error(`No username or password set for ${this.options.basic_auth}`);
                 rpOption['auth'] = { user: secret.username, pass: secret.password };
             }
+            console.log('Request options:', rpOption); // Debug log
             const res = await rp(rpOption);
+            console.log('Response status:', res.statusCode); // Debug log
             if (res.statusCode >= 200 && res.statusCode <= 299) {
                 const jsonRes = typeof res.body === 'object' ? res.body : { body: res.body };
                 jsonRes.__http_status_code__ = res.statusCode;
@@ -4533,6 +4402,7 @@ var connectedContent = {
         }
         catch (error) {
             const requestError = error;
+            console.error('Connected Content Error:', requestError); // Debug log
             ctx.environments[this.options.save || 'connected'] = {
                 error: requestError.message || 'Request failed',
                 status: requestError.statusCode

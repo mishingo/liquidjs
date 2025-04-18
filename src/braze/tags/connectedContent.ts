@@ -24,7 +24,12 @@ export default <TagImplOptions>{
     if (options) {
       const headersMatch = options.match(headerRegex)
       if (headersMatch != null) {
-        this.options.headers = JSON.parse(headersMatch[1])
+        try {
+          this.options.headers = JSON.parse(headersMatch[1])
+        } catch (e) {
+          console.error('Headers JSON parse error:', e)
+          throw new Error(`Headers JSON malformed in token ${tagToken.getText()}`)
+        }
       }
       options.replace(headerRegex, '').split(/\s+:/).forEach((optStr) => {
         if (optStr === '') return
@@ -40,6 +45,7 @@ export default <TagImplOptions>{
     try {
       // Parse any Liquid variables/expressions in the URL
       const renderedUrl = await this.liquid.parseAndRender(this.url, ctx.getAll())
+      console.log('Rendered URL:', renderedUrl) // Debug log
 
       // Set up caching
       const method = (this.options.method || 'GET').toUpperCase()
@@ -78,7 +84,7 @@ export default <TagImplOptions>{
       // Handle body if present
       let body = this.options.body
       if (this.options.body) {
-        if (method.toUpperCase() === 'POST' && contentType.toLowerCase().includes('application/json')) {
+        if (method.toUpperCase() === 'POST' && contentType && contentType.toLowerCase().includes('application/json')) {
           const jsonBody = {}
           for (const element of this.options.body.split('&')) {
             const bodyElementSplit = element.split('=')
@@ -116,7 +122,9 @@ export default <TagImplOptions>{
         rpOption['auth'] = { user: secret.username, pass: secret.password }
       }
 
+      console.log('Request options:', rpOption) // Debug log
       const res = await rp(rpOption)
+      console.log('Response status:', res.statusCode) // Debug log
       
       if (res.statusCode >= 200 && res.statusCode <= 299) {
         const jsonRes = typeof res.body === 'object' ? res.body : { body: res.body }
@@ -132,6 +140,7 @@ export default <TagImplOptions>{
       emitter.write('')
     } catch (error: unknown) {
       const requestError = error as RequestError
+      console.error('Connected Content Error:', requestError) // Debug log
       ctx.environments[this.options.save || 'connected'] = {
         error: requestError.message || 'Request failed',
         status: requestError.statusCode

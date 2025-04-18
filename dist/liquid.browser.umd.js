@@ -1610,11 +1610,9 @@
                 case 0:
                     if (!token)
                         return [2 /*return*/];
-                    content = 'content' in token ? token.content : undefined;
-                    if (typeof content === 'string' && content.includes('${')) {
-                        content = content.replace(/\$\{([^}]+)\}/g, function (_, varName) {
-                            return String(ctx._get(varName.trim())); // Use `_get()` instead of `get()`
-                        });
+                    if ('content' in token) {
+                        content = token.content;
+                        return [2 /*return*/, content];
                     }
                     if (!isPropertyAccessToken(token)) return [3 /*break*/, 2];
                     return [4 /*yield*/, evalPropertyAccessToken(token, ctx, lenient)];
@@ -1623,126 +1621,64 @@
                     if (!isRangeToken(token)) return [3 /*break*/, 4];
                     return [4 /*yield*/, evalRangeToken(token, ctx)];
                 case 3: return [2 /*return*/, _a.sent()];
-                case 4: return [2 /*return*/, content];
+                case 4: return [2 /*return*/];
             }
         });
     }
-    /*
-    original
-    export function * evalToken (token: Token | undefined, ctx: Context, lenient = false): IterableIterator<unknown> {
-      if (!token) return
-      if ('content' in token) return token.content
-      if (isPropertyAccessToken(token)) return yield evalPropertyAccessToken(token, ctx, lenient)
-      if (isRangeToken(token)) return yield evalRangeToken(token, ctx)
-    }
-    */
     function evalPropertyAccessToken(token, ctx, lenient) {
-        var props, _a, _b, prop, propValue, e_2_1, variable, e_3;
-        var e_2, _c;
-        return __generator(this, function (_d) {
-            switch (_d.label) {
+        var props, _a, _b, prop, _c, _d, e_2_1, variable, e_3;
+        var e_2, _e;
+        return __generator(this, function (_f) {
+            switch (_f.label) {
                 case 0:
                     props = [];
-                    _d.label = 1;
+                    _f.label = 1;
                 case 1:
-                    _d.trys.push([1, 6, 7, 8]);
+                    _f.trys.push([1, 6, 7, 8]);
                     _a = __values(token.props), _b = _a.next();
-                    _d.label = 2;
+                    _f.label = 2;
                 case 2:
                     if (!!_b.done) return [3 /*break*/, 5];
                     prop = _b.value;
+                    _d = (_c = props).push;
                     return [4 /*yield*/, evalToken(prop, ctx, false)];
                 case 3:
-                    propValue = _d.sent();
-                    if (typeof propValue === 'string') {
-                        // Handle dynamic expressions within ${} only if propValue is a string
-                        //@ts-ignore
-                        if (propValue.startsWith('${') && propValue.endsWith('}')) {
-                            //@ts-ignore
-                            propValue = propValue.slice(2, -1); // remove the `${` and `}`
-                        }
-                    }
-                    //@ts-ignore
-                    props.push(propValue);
-                    _d.label = 4;
+                    _d.apply(_c, [(_f.sent())]);
+                    _f.label = 4;
                 case 4:
                     _b = _a.next();
                     return [3 /*break*/, 2];
                 case 5: return [3 /*break*/, 8];
                 case 6:
-                    e_2_1 = _d.sent();
+                    e_2_1 = _f.sent();
                     e_2 = { error: e_2_1 };
                     return [3 /*break*/, 8];
                 case 7:
                     try {
-                        if (_b && !_b.done && (_c = _a.return)) _c.call(_a);
+                        if (_b && !_b.done && (_e = _a.return)) _e.call(_a);
                     }
                     finally { if (e_2) throw e_2.error; }
                     return [7 /*endfinally*/];
                 case 8:
-                    _d.trys.push([8, 14, , 15]);
+                    _f.trys.push([8, 14, , 15]);
                     if (!token.variable) return [3 /*break*/, 11];
                     return [4 /*yield*/, evalToken(token.variable, ctx, lenient)];
                 case 9:
-                    variable = _d.sent();
+                    variable = _f.sent();
                     return [4 /*yield*/, ctx._getFromScope(variable, props)];
-                case 10: return [2 /*return*/, _d.sent()];
+                case 10: return [2 /*return*/, _f.sent()];
                 case 11: return [4 /*yield*/, ctx._get(props)];
-                case 12: return [2 /*return*/, _d.sent()];
+                case 12: return [2 /*return*/, _f.sent()];
                 case 13: return [3 /*break*/, 15];
                 case 14:
-                    e_3 = _d.sent();
+                    e_3 = _f.sent();
                     if (lenient && e_3.name === 'InternalUndefinedVariableError')
                         return [2 /*return*/, null];
-                    throw new UndefinedVariableError(e_3, token);
+                    throw (new UndefinedVariableError(e_3, token));
                 case 15: return [2 /*return*/];
             }
         });
     }
-    /*
-    working without []
-    function * evalPropertyAccessToken(token: PropertyAccessToken, ctx: Context, lenient: boolean): IterableIterator<unknown> {
-      const props: string[] = [];
-      for (const prop of token.props) {
-        let propValue = (yield evalToken(prop, ctx, false)) as unknown as string;
-        if (propValue.startsWith('${') && propValue.endsWith('}')) {
-          propValue = propValue.slice(2, -1); // remove the `${` and `}`
-        }
-        props.push(propValue);
-      }
-      try {
-        if (token.variable) {
-          const variable = yield evalToken(token.variable, ctx, lenient);
-          return yield ctx._getFromScope(variable, props);
-        } else {
-          return yield ctx._get(props);
-        }
-      } catch (e) {
-        if (lenient && (e as Error).name === 'InternalUndefinedVariableError') return null;
-        throw (new UndefinedVariableError(e as Error, token));
-      }
-    }
-      */
-    /*
-    original
-    function * evalPropertyAccessToken (token: PropertyAccessToken, ctx: Context, lenient: boolean): IterableIterator<unknown> {
-      const props: string[] = []
-      for (const prop of token.props) {
-        props.push((yield evalToken(prop, ctx, false)) as unknown as string)
-      }
-      try {
-        if (token.variable) {
-          const variable = yield evalToken(token.variable, ctx, lenient)
-          return yield ctx._getFromScope(variable, props)
-        } else {
-          return yield ctx._get(props)
-        }
-      } catch (e) {
-        if (lenient && (e as Error).name === 'InternalUndefinedVariableError') return null
-        throw (new UndefinedVariableError(e as Error, token))
-      }
-    }
-      */
     function evalQuotedToken(token) {
         return token.content;
     }
@@ -2741,80 +2677,6 @@
             }
             return props;
         };
-        /*
-        original
-        private readProperties (isBegin = true): (ValueToken | IdentifierToken)[] {
-          const props: (ValueToken | IdentifierToken)[] = []
-          while (true) {
-            if (this.peek() === '[') {
-              this.p++
-              const prop = this.readValue() || new IdentifierToken(this.input, this.p, this.p, this.file)
-              this.assert(this.readTo(']') !== -1, '[ not closed')
-              props.push(prop)
-              continue
-            }
-            if (isBegin && !props.length) {
-              const prop = this.readNonEmptyIdentifier()
-              if (prop) {
-                props.push(prop)
-                continue
-              }
-            }
-            if (this.peek() === '.' && this.peek(1) !== '.') { // skip range syntax
-              this.p++
-              const prop = this.readNonEmptyIdentifier()
-              if (!prop) break
-              props.push(prop)
-              continue
-            }
-            break
-          }
-          return props
-        }
-        */
-        /*
-        works
-        private readProperties(isBegin = true): (ValueToken | IdentifierToken)[] {
-          const props: (ValueToken | IdentifierToken)[] = [];
-          while (true) {
-            if (this.peek() === '[') {
-              this.p++;
-              const prop = this.readValue() || new IdentifierToken(this.input, this.p, this.p, this.file);
-              this.assert(this.readTo(']') !== -1, '[ not closed');
-              props.push(prop);
-              continue;
-            }
-            if (isBegin && !props.length) {
-              const prop = this.readNonEmptyIdentifier();
-              if (prop) {
-                props.push(prop);
-                continue;
-              }
-            }
-            if (this.peek() === '.' && this.peek(1) !== '..') { // skip range syntax
-              this.p++;
-              let prop;
-              if (this.peek() === '$' && this.peek(1) === '{') {
-                this.p += 2; // skip "${"
-                const start = this.p;
-                while (this.p < this.N && this.input[this.p] !== '}') {
-                  this.p++;
-                }
-                prop = new IdentifierToken(this.input, start, this.p, this.file);
-                this.assert(this.input[this.p] === '}', `expected "}" at the end of dynamic property expression`);
-                this.p++; // skip "}"
-              } else {
-                prop = this.readNonEmptyIdentifier();
-              }
-              if (!prop) break;
-              props.push(prop);
-              continue;
-            }
-            break;
-          }
-          return props;
-        }
-        */
         Tokenizer.prototype.readNumber = function () {
             this.skipBlank();
             var decimalFound = false;
@@ -5961,7 +5823,13 @@
             if (options) {
                 var headersMatch = options.match(headerRegex);
                 if (headersMatch != null) {
-                    this.options.headers = JSON.parse(headersMatch[1]);
+                    try {
+                        this.options.headers = JSON.parse(headersMatch[1]);
+                    }
+                    catch (e) {
+                        console.error('Headers JSON parse error:', e);
+                        throw new Error("Headers JSON malformed in token ".concat(tagToken.getText()));
+                    }
                 }
                 options.replace(headerRegex, '').split(/\s+:/).forEach(function (optStr) {
                     if (optStr === '')
@@ -5982,11 +5850,10 @@
                     switch (_l.label) {
                         case 0:
                             _l.trys.push([0, 22, , 23]);
-                            return [4 /*yield*/, this.liquid.parseAndRender(this.url, ctx.getAll())
-                                // Set up caching
-                            ];
+                            return [4 /*yield*/, this.liquid.parseAndRender(this.url, ctx.getAll())];
                         case 1:
                             renderedUrl = _l.sent();
+                            console.log('Rendered URL:', renderedUrl); // Debug log
                             method = (this.options.method || 'GET').toUpperCase();
                             cacheTTL = 300 * 1000;
                             if (method !== 'GET') {
@@ -6042,7 +5909,7 @@
                         case 9:
                             body = this.options.body;
                             if (!this.options.body) return [3 /*break*/, 20];
-                            if (!(method.toUpperCase() === 'POST' && contentType.toLowerCase().includes('application/json'))) return [3 /*break*/, 18];
+                            if (!(method.toUpperCase() === 'POST' && contentType && contentType.toLowerCase().includes('application/json'))) return [3 /*break*/, 18];
                             jsonBody = {};
                             _l.label = 10;
                         case 10:
@@ -6108,9 +5975,11 @@
                                     throw new Error("No username or password set for ".concat(this.options.basic_auth));
                                 rpOption['auth'] = { user: secret.username, pass: secret.password };
                             }
+                            console.log('Request options:', rpOption); // Debug log
                             return [4 /*yield*/, rp(rpOption)];
                         case 21:
                             res = _l.sent();
+                            console.log('Response status:', res.statusCode); // Debug log
                             if (res.statusCode >= 200 && res.statusCode <= 299) {
                                 jsonRes = typeof res.body === 'object' ? res.body : { body: res.body };
                                 jsonRes.__http_status_code__ = res.statusCode;
@@ -6128,6 +5997,7 @@
                         case 22:
                             error_1 = _l.sent();
                             requestError = error_1;
+                            console.error('Connected Content Error:', requestError); // Debug log
                             ctx.environments[this.options.save || 'connected'] = {
                                 error: requestError.message || 'Request failed',
                                 status: requestError.statusCode
