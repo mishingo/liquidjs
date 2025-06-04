@@ -5849,7 +5849,7 @@
                 return __generator(this, function (_l) {
                     switch (_l.label) {
                         case 0:
-                            _l.trys.push([0, 22, , 23]);
+                            _l.trys.push([0, 25, , 26]);
                             return [4 /*yield*/, this.liquid.parseAndRender(this.url, ctx.getAll())];
                         case 1:
                             renderedUrl = _l.sent();
@@ -5908,8 +5908,9 @@
                             return [7 /*endfinally*/];
                         case 9:
                             body = this.options.body;
-                            if (!this.options.body) return [3 /*break*/, 20];
-                            if (!(method.toUpperCase() === 'POST' && contentType && contentType.toLowerCase().includes('application/json'))) return [3 /*break*/, 18];
+                            if (!this.options.body) return [3 /*break*/, 23];
+                            if (!(method.toUpperCase() === 'POST' && contentType && contentType.toLowerCase().includes('application/json'))) return [3 /*break*/, 21];
+                            if (!(this.options.body.includes('&') && this.options.body.includes('=') && !this.options.body.includes('{{'))) return [3 /*break*/, 18];
                             jsonBody = {};
                             _l.label = 10;
                         case 10:
@@ -5945,9 +5946,15 @@
                             return [3 /*break*/, 20];
                         case 18: return [4 /*yield*/, this.liquid.parseAndRender(this.options.body, ctx.getAll())];
                         case 19:
+                            // Render as Liquid template (handles both {{ variable }} and plain variable)
                             body = _l.sent();
                             _l.label = 20;
-                        case 20:
+                        case 20: return [3 /*break*/, 23];
+                        case 21: return [4 /*yield*/, this.liquid.parseAndRender(this.options.body, ctx.getAll())];
+                        case 22:
+                            body = _l.sent();
+                            _l.label = 23;
+                        case 23:
                             rpOption = {
                                 'resolveWithFullResponse': true,
                                 method: method,
@@ -5977,7 +5984,7 @@
                             }
                             console.log('Request options:', rpOption); // Debug log
                             return [4 /*yield*/, rp(rpOption)];
-                        case 21:
+                        case 24:
                             res = _l.sent();
                             console.log('Response status:', res.statusCode); // Debug log
                             if (res.statusCode >= 200 && res.statusCode <= 299) {
@@ -5993,8 +6000,8 @@
                                 };
                             }
                             emitter.write('');
-                            return [3 /*break*/, 23];
-                        case 22:
+                            return [3 /*break*/, 26];
+                        case 25:
                             error_1 = _l.sent();
                             requestError = error_1;
                             console.error('Connected Content Error:', requestError); // Debug log
@@ -6003,8 +6010,8 @@
                                 status: requestError.statusCode
                             };
                             emitter.write('');
-                            return [3 /*break*/, 23];
-                        case 23: return [2 /*return*/];
+                            return [3 /*break*/, 26];
+                        case 26: return [2 /*return*/];
                     }
                 });
             });
