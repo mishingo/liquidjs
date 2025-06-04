@@ -4273,6 +4273,7 @@ const rp = rp_;
 // Matches both direct URLs and Liquid variables/expressions
 const re = new RegExp(`(\\{\\{.*?\\}\\}|https?://[^\\s]+)(\\s+(\\s|.)*)?$`);
 const headerRegex = new RegExp(`:headers\\s+(\\{(.|\\s)*?[^\\}]\\}([^\\}]|$))`);
+const bodyRegex = new RegExp(`:body\\s+(.+?)(?=\\s*:|$)`, 's');
 var connectedContent = {
     parse: function (tagToken) {
         const match = tagToken.args.match(re);
@@ -4293,14 +4294,24 @@ var connectedContent = {
                     throw new Error(`Headers JSON malformed in token ${tagToken.getText()}`);
                 }
             }
-            options.replace(headerRegex, '').split(/\s+:/).forEach((optStr) => {
+            // Extract body parameter first if present
+            const bodyMatch = options.match(bodyRegex);
+            if (bodyMatch) {
+                this.options.body = bodyMatch[1].trim();
+            }
+            // Remove body and headers from options string before processing other parameters
+            let remainingOptions = options.replace(headerRegex, '').replace(bodyRegex, '');
+            remainingOptions.split(/\s+:/).forEach((optStr) => {
                 if (optStr === '')
                     return;
                 const opts = optStr.split(/\s+/);
                 if (opts[0] === 'headers') {
                     console.error('Headers JSON malformed. Check your headers value');
                 }
-                this.options[opts[0]] = opts.length > 1 ? opts[1] : true;
+                // Skip body as it's already handled
+                if (opts[0] !== 'body' && opts[0]) {
+                    this.options[opts[0]] = opts.length > 1 ? opts[1] : true;
+                }
             });
         }
     },
@@ -4345,20 +4356,12 @@ var connectedContent = {
             let body = this.options.body;
             if (this.options.body) {
                 if (method.toUpperCase() === 'POST' && contentType && contentType.toLowerCase().includes('application/json')) {
-                    // Check if it contains form-data style parameters (key=value&key=value)
-                    if (this.options.body.includes('&') && this.options.body.includes('=') && !this.options.body.includes('{{')) {
-                        // Handle form-data style parsing
-                        const jsonBody = {};
-                        for (const element of this.options.body.split('&')) {
-                            const bodyElementSplit = element.split('=');
-                            jsonBody[bodyElementSplit[0]] = (await this.liquid.parseAndRender(bodyElementSplit[1], ctx.getAll())).replace(/(?:\r\n|\r|\n|)/g, '');
-                        }
-                        body = JSON.stringify(jsonBody);
+                    const jsonBody = {};
+                    for (const element of this.options.body.split('&')) {
+                        const bodyElementSplit = element.split('=');
+                        jsonBody[bodyElementSplit[0]] = (await this.liquid.parseAndRender(bodyElementSplit[1], ctx.getAll())).replace(/(?:\r\n|\r|\n|)/g, '');
                     }
-                    else {
-                        // Render as Liquid template (handles both {{ variable }} and plain variable)
-                        body = await this.liquid.parseAndRender(this.options.body, ctx.getAll());
-                    }
+                    body = JSON.stringify(jsonBody);
                 }
                 else {
                     body = await this.liquid.parseAndRender(this.options.body, ctx.getAll());

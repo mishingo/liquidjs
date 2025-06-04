@@ -5810,6 +5810,7 @@
     // Matches both direct URLs and Liquid variables/expressions
     var re = new RegExp("(\\{\\{.*?\\}\\}|https?://[^\\s]+)(\\s+(\\s|.)*)?$");
     var headerRegex = new RegExp(":headers\\s+(\\{(.|\\s)*?[^\\}]\\}([^\\}]|$))");
+    var bodyRegex = new RegExp(":body\\s+(.+?)(?=\\s*:|$)", 's');
     var connectedContent = {
         parse: function (tagToken) {
             var _this = this;
@@ -5831,14 +5832,24 @@
                         throw new Error("Headers JSON malformed in token ".concat(tagToken.getText()));
                     }
                 }
-                options.replace(headerRegex, '').split(/\s+:/).forEach(function (optStr) {
+                // Extract body parameter first if present
+                var bodyMatch = options.match(bodyRegex);
+                if (bodyMatch) {
+                    this.options.body = bodyMatch[1].trim();
+                }
+                // Remove body and headers from options string before processing other parameters
+                var remainingOptions = options.replace(headerRegex, '').replace(bodyRegex, '');
+                remainingOptions.split(/\s+:/).forEach(function (optStr) {
                     if (optStr === '')
                         return;
                     var opts = optStr.split(/\s+/);
                     if (opts[0] === 'headers') {
                         console.error('Headers JSON malformed. Check your headers value');
                     }
-                    _this.options[opts[0]] = opts.length > 1 ? opts[1] : true;
+                    // Skip body as it's already handled
+                    if (opts[0] !== 'body' && opts[0]) {
+                        _this.options[opts[0]] = opts.length > 1 ? opts[1] : true;
+                    }
                 });
             }
         },
@@ -5849,7 +5860,7 @@
                 return __generator(this, function (_l) {
                     switch (_l.label) {
                         case 0:
-                            _l.trys.push([0, 25, , 26]);
+                            _l.trys.push([0, 22, , 23]);
                             return [4 /*yield*/, this.liquid.parseAndRender(this.url, ctx.getAll())];
                         case 1:
                             renderedUrl = _l.sent();
@@ -5908,9 +5919,8 @@
                             return [7 /*endfinally*/];
                         case 9:
                             body = this.options.body;
-                            if (!this.options.body) return [3 /*break*/, 23];
-                            if (!(method.toUpperCase() === 'POST' && contentType && contentType.toLowerCase().includes('application/json'))) return [3 /*break*/, 21];
-                            if (!(this.options.body.includes('&') && this.options.body.includes('=') && !this.options.body.includes('{{'))) return [3 /*break*/, 18];
+                            if (!this.options.body) return [3 /*break*/, 20];
+                            if (!(method.toUpperCase() === 'POST' && contentType && contentType.toLowerCase().includes('application/json'))) return [3 /*break*/, 18];
                             jsonBody = {};
                             _l.label = 10;
                         case 10:
@@ -5946,15 +5956,9 @@
                             return [3 /*break*/, 20];
                         case 18: return [4 /*yield*/, this.liquid.parseAndRender(this.options.body, ctx.getAll())];
                         case 19:
-                            // Render as Liquid template (handles both {{ variable }} and plain variable)
                             body = _l.sent();
                             _l.label = 20;
-                        case 20: return [3 /*break*/, 23];
-                        case 21: return [4 /*yield*/, this.liquid.parseAndRender(this.options.body, ctx.getAll())];
-                        case 22:
-                            body = _l.sent();
-                            _l.label = 23;
-                        case 23:
+                        case 20:
                             rpOption = {
                                 'resolveWithFullResponse': true,
                                 method: method,
@@ -5984,7 +5988,7 @@
                             }
                             console.log('Request options:', rpOption); // Debug log
                             return [4 /*yield*/, rp(rpOption)];
-                        case 24:
+                        case 21:
                             res = _l.sent();
                             console.log('Response status:', res.statusCode); // Debug log
                             if (res.statusCode >= 200 && res.statusCode <= 299) {
@@ -6000,8 +6004,8 @@
                                 };
                             }
                             emitter.write('');
-                            return [3 /*break*/, 26];
-                        case 25:
+                            return [3 /*break*/, 23];
+                        case 22:
                             error_1 = _l.sent();
                             requestError = error_1;
                             console.error('Connected Content Error:', requestError); // Debug log
@@ -6010,8 +6014,8 @@
                                 status: requestError.statusCode
                             };
                             emitter.write('');
-                            return [3 /*break*/, 26];
-                        case 26: return [2 /*return*/];
+                            return [3 /*break*/, 23];
+                        case 23: return [2 /*return*/];
                     }
                 });
             });
