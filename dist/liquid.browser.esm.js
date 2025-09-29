@@ -4460,6 +4460,9 @@ var abortMessage = {
 const rp$1 = rp_;
 // Match the catalog_items tag syntax: catalog_items catalog_type post_uid
 const tagRegex = /^(\S+)\s+\{\{(.+?)\}\}$/;
+// Rate limiting: track last request time to stay under Braze's 50 req/min limit
+let lastRequestTime = 0;
+const MIN_REQUEST_INTERVAL = 150; // 150ms between requests = ~40 req/min (safe buffer)
 var catalogItems = {
     parse: function (tagToken) {
         const match = tagToken.args.match(tagRegex);
@@ -4473,6 +4476,12 @@ var catalogItems = {
     render: function (ctx, emitter) {
         return __awaiter(this, void 0, void 0, function* () {
             try {
+                // Throttle requests to stay under rate limit
+                const now = Date.now();
+                const timeSinceLastRequest = now - lastRequestTime;
+                if (timeSinceLastRequest < MIN_REQUEST_INTERVAL) {
+                    yield new Promise(resolve => setTimeout(resolve, MIN_REQUEST_INTERVAL - timeSinceLastRequest));
+                }
                 const renderedCatalogType = yield this.liquid.parseAndRender(this.catalogType, ctx.getAll());
                 const renderedPostUid = yield this.liquid.evalValue(this.postUid, ctx);
                 console.log('Rendered UID:', renderedPostUid);
@@ -4494,8 +4503,9 @@ var catalogItems = {
                     json: true,
                     timeout: 5000,
                     cacheKey: `catalog-${renderedCatalogType}-${renderedPostUid}`,
-                    cacheTTL: 300000
+                    cacheTTL: 604800000
                 });
+                lastRequestTime = Date.now();
                 if (response === null || response === void 0 ? void 0 : response.items) {
                     ctx.push({ items: response.items });
                 }

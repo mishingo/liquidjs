@@ -6055,6 +6055,9 @@
     var rp$1 = rp_;
     // Match the catalog_items tag syntax: catalog_items catalog_type post_uid
     var tagRegex = /^(\S+)\s+\{\{(.+?)\}\}$/;
+    // Rate limiting: track last request time to stay under Braze's 50 req/min limit
+    var lastRequestTime = 0;
+    var MIN_REQUEST_INTERVAL = 150; // 150ms between requests = ~40 req/min (safe buffer)
     var catalogItems = {
         parse: function (tagToken) {
             var match = tagToken.args.match(tagRegex);
@@ -6067,16 +6070,25 @@
         },
         render: function (ctx, emitter) {
             return __awaiter(this, void 0, void 0, function () {
-                var renderedCatalogType, renderedPostUid, authToken, response, error_1, err;
+                var now, timeSinceLastRequest_1, renderedCatalogType, renderedPostUid, authToken, response, error_1, err;
                 return __generator(this, function (_a) {
                     switch (_a.label) {
                         case 0:
-                            _a.trys.push([0, 4, , 5]);
-                            return [4 /*yield*/, this.liquid.parseAndRender(this.catalogType, ctx.getAll())];
+                            _a.trys.push([0, 6, , 7]);
+                            now = Date.now();
+                            timeSinceLastRequest_1 = now - lastRequestTime;
+                            if (!(timeSinceLastRequest_1 < MIN_REQUEST_INTERVAL)) return [3 /*break*/, 2];
+                            return [4 /*yield*/, new Promise(function (resolve) {
+                                    return setTimeout(resolve, MIN_REQUEST_INTERVAL - timeSinceLastRequest_1);
+                                })];
                         case 1:
+                            _a.sent();
+                            _a.label = 2;
+                        case 2: return [4 /*yield*/, this.liquid.parseAndRender(this.catalogType, ctx.getAll())];
+                        case 3:
                             renderedCatalogType = _a.sent();
                             return [4 /*yield*/, this.liquid.evalValue(this.postUid, ctx)];
-                        case 2:
+                        case 4:
                             renderedPostUid = _a.sent();
                             console.log('Rendered UID:', renderedPostUid);
                             if (!renderedPostUid) {
@@ -6097,10 +6109,11 @@
                                     json: true,
                                     timeout: 5000,
                                     cacheKey: "catalog-".concat(renderedCatalogType, "-").concat(renderedPostUid),
-                                    cacheTTL: 300000
+                                    cacheTTL: 604800000
                                 })];
-                        case 3:
+                        case 5:
                             response = _a.sent();
+                            lastRequestTime = Date.now();
                             if (response === null || response === void 0 ? void 0 : response.items) {
                                 ctx.push({ items: response.items });
                             }
@@ -6108,15 +6121,15 @@
                                 ctx.push({ items: [] });
                             }
                             emitter.write('');
-                            return [3 /*break*/, 5];
-                        case 4:
+                            return [3 /*break*/, 7];
+                        case 6:
                             error_1 = _a.sent();
                             err = error_1;
                             console.error('Request failed:', err.message);
                             ctx.push({ items: [] });
                             emitter.write('');
-                            return [3 /*break*/, 5];
-                        case 5: return [2 /*return*/];
+                            return [3 /*break*/, 7];
+                        case 7: return [2 /*return*/];
                     }
                 });
             });
