@@ -4481,7 +4481,9 @@ var catalogItems = {
                     'Content-Type': 'application/json'
                 },
                 json: true,
-                timeout: 2000
+                timeout: 5000,
+                cacheKey: `catalog-${renderedCatalogType}-${renderedPostUid}`,
+                cacheTTL: 300000
             });
             if (response?.items) {
                 ctx.push({ items: response.items });

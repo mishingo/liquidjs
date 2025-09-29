@@ -50,14 +50,16 @@ export default <TagImplOptions>{
 
       console.log('theurl:', `https://rest.iad-01.braze.com/catalogs/${renderedCatalogType}/items/${renderedPostUid}`)
       const response = await rp({
-        method: 'GET', 
+        method: 'GET',
         uri: `https://rest.iad-01.braze.com/catalogs/${renderedCatalogType}/items/${renderedPostUid}`,
         headers: {
           'Authorization': `Bearer ${authToken}`,
           'Content-Type': 'application/json'
         },
         json: true,
-        timeout: 2000
+        timeout: 5000,
+        cacheKey: `catalog-${renderedCatalogType}-${renderedPostUid}`,
+        cacheTTL: 300000
       });
 
       if (response?.items) {

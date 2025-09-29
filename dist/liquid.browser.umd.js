@@ -6095,7 +6095,9 @@
                                         'Content-Type': 'application/json'
                                     },
                                     json: true,
-                                    timeout: 2000
+                                    timeout: 5000,
+                                    cacheKey: "catalog-".concat(renderedCatalogType, "-").concat(renderedPostUid),
+                                    cacheTTL: 300000
                                 })];
                         case 3:
                             response = _a.sent();
