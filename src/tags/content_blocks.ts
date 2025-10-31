@@ -2,6 +2,7 @@ import { __assign } from 'tslib';
 import { TopLevelToken, assert, Liquid, Token, Template, evalQuotedToken, TypeGuards, Tokenizer, evalToken, Hash, Emitter, TagToken, Context, Tag } from '..';
 import { Parser } from '../parser';
 import * as path from 'path';
+import * as fs from 'fs';
 
 export type ParsedFileName = Template[] | Token | string | undefined;
 
@@ -25,8 +26,24 @@ export default class extends Tag {
     assert(filename, () => `illegal file path "${filename}"`);
 
     // Construct the file path for the content block
-    const projectRoot = process.cwd();
-    const filepath = path.join(projectRoot, 'src', 'content_blocks', `${filename}.liquid`);
+    const projectRoot: string | string[] = liquid.options.root || process.cwd();
+
+    let filepath: string = '';
+    if (projectRoot instanceof Array) {
+      // We will need to search for it
+      for (const root of projectRoot) {
+        const tentativePath = path.join(root, 'src', 'content_blocks', `${filename}.liquid`);
+        if (fs.existsSync(tentativePath)) {
+          filepath = tentativePath;
+          break;
+        }
+      }
+      assert(filepath, () => `file "${filename}.liquid" not found in any of the root directories`);
+    } else {
+      filepath = path.join(projectRoot, 'src', 'content_blocks', `${filename}.liquid`);
+      assert(fs.existsSync(filepath), () => `file "${filename}.liquid" not found at path "${filepath}"`);
+    }
+
     // Render any variables from the hash (if applicable)
     const hashScope = yield hash.render(ctx);
     // Merge the hash scope with the current context

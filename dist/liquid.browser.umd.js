@@ -4,10 +4,10 @@
  * Released under the MIT License.
  */
 (function (global, factory) {
-    typeof exports === 'object' && typeof module !== 'undefined' ? factory(exports, require('path'), require('crypto'), require('request-promise-cache')) :
-    typeof define === 'function' && define.amd ? define(['exports', 'path', 'crypto', 'request-promise-cache'], factory) :
-    (global = global || self, factory(global.liquidjs = {}, global.path, global.crypto, global.rp_));
-}(this, (function (exports, path, crypto, rp_) { 'use strict';
+    typeof exports === 'object' && typeof module !== 'undefined' ? factory(exports, require('path'), require('fs'), require('crypto'), require('request-promise-cache')) :
+    typeof define === 'function' && define.amd ? define(['exports', 'path', 'fs', 'crypto', 'request-promise-cache'], factory) :
+    (global = global || self, factory(global.liquidjs = {}, global.path, global.fs$1, global.crypto, global.rp_));
+}(this, (function (exports, path, fs$1, crypto, rp_) { 'use strict';
 
     /******************************************************************************
     Copyright (c) Microsoft Corporation.
@@ -5694,28 +5694,54 @@
             return _this;
         }
         default_1.prototype.render = function (ctx, emitter) {
-            var _a, liquid, hash, filename, projectRoot, filepath, hashScope, templates;
-            return __generator(this, function (_b) {
-                switch (_b.label) {
+            var _a, liquid, hash, filename, projectRoot, filepath, projectRoot_1, projectRoot_1_1, root, tentativePath, hashScope, templates;
+            var e_1, _b;
+            return __generator(this, function (_c) {
+                switch (_c.label) {
                     case 0:
                         _a = this, liquid = _a.liquid, hash = _a.hash;
                         return [4 /*yield*/, renderFilePath$1(this['file'], ctx, liquid)];
                     case 1:
-                        filename = (_b.sent());
+                        filename = (_c.sent());
                         assert(filename, function () { return "illegal file path \"".concat(filename, "\""); });
-                        projectRoot = process.cwd();
-                        filepath = path.join(projectRoot, 'src', 'content_blocks', "".concat(filename, ".liquid"));
+                        projectRoot = liquid.options.root || process.cwd();
+                        filepath = '';
+                        if (projectRoot instanceof Array) {
+                            try {
+                                // We will need to search for it
+                                for (projectRoot_1 = __values(projectRoot), projectRoot_1_1 = projectRoot_1.next(); !projectRoot_1_1.done; projectRoot_1_1 = projectRoot_1.next()) {
+                                    root = projectRoot_1_1.value;
+                                    tentativePath = path.join(root, 'src', 'content_blocks', "".concat(filename, ".liquid"));
+                                    if (fs$1.existsSync(tentativePath)) {
+                                        filepath = tentativePath;
+                                        break;
+                                    }
+                                }
+                            }
+                            catch (e_1_1) { e_1 = { error: e_1_1 }; }
+                            finally {
+                                try {
+                                    if (projectRoot_1_1 && !projectRoot_1_1.done && (_b = projectRoot_1.return)) _b.call(projectRoot_1);
+                                }
+                                finally { if (e_1) throw e_1.error; }
+                            }
+                            assert(filepath, function () { return "file \"".concat(filename, ".liquid\" not found in any of the root directories"); });
+                        }
+                        else {
+                            filepath = path.join(projectRoot, 'src', 'content_blocks', "".concat(filename, ".liquid"));
+                            assert(fs$1.existsSync(filepath), function () { return "file \"".concat(filename, ".liquid\" not found at path \"").concat(filepath, "\""); });
+                        }
                         return [4 /*yield*/, hash.render(ctx)];
                     case 2:
-                        hashScope = _b.sent();
+                        hashScope = _c.sent();
                         // Merge the hash scope with the current context
                         __assign(ctx.environments, hashScope);
                         return [4 /*yield*/, liquid._parsePartialFile(filepath, ctx.sync, this['currentFile'])];
                     case 3:
-                        templates = (_b.sent());
+                        templates = (_c.sent());
                         return [4 /*yield*/, liquid.renderer.renderTemplates(templates, ctx, emitter)];
                     case 4:
-                        _b.sent();
+                        _c.sent();
                         return [2 /*return*/];
                 }
             });
