@@ -4,6 +4,7 @@
  * Released under the MIT License.
  */
 import { join as join$1 } from 'path';
+import { existsSync as existsSync$1 } from 'fs';
 import { createHash, createHmac } from 'crypto';
 import * as rp_ from 'request-promise-cache';
 
@@ -4187,8 +4188,23 @@ class ContentBlocksTag extends Tag {
         const filename = (yield renderFilePath$1(this['file'], ctx, liquid));
         assert(filename, () => `illegal file path "${filename}"`);
         // Construct the file path for the content block
-        const projectRoot = process.cwd();
-        const filepath = join$1(projectRoot, 'src', 'content_blocks', `${filename}.liquid`);
+        const projectRoot = liquid.options.root || process.cwd();
+        let filepath = '';
+        if (projectRoot instanceof Array) {
+            // We will need to search for it
+            for (const root of projectRoot) {
+                const tentativePath = join$1(root, 'src', 'content_blocks', `${filename}.liquid`);
+                if (existsSync$1(tentativePath)) {
+                    filepath = tentativePath;
+                    break;
+                }
+            }
+            assert(filepath, () => `file "${filename}.liquid" not found in any of the root directories`);
+        }
+        else {
+            filepath = join$1(projectRoot, 'src', 'content_blocks', `${filename}.liquid`);
+            assert(existsSync$1(filepath), () => `file "${filename}.liquid" not found at path "${filepath}"`);
+        }
         // Render any variables from the hash (if applicable)
         const hashScope = yield hash.render(ctx);
         // Merge the hash scope with the current context
